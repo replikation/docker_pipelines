@@ -1,2 +1,7 @@
-# docker_pipelines
-tinkering around with a docker pipeline for the lab
+# Docker_pipelines
+
+Docker pipeline for nanopore assembly_only
+
+execute both install skripts
+
+run cdocker_assembly.sh
