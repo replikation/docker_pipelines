@@ -6,3 +6,4 @@ docker pull replikation/wtdbg2
 docker pull replikation/bwa
 docker pull replikation/samtools
 docker pull replikation/nanopolish
+docker pull replikation/albacore
