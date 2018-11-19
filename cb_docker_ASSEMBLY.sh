@@ -2,45 +2,42 @@
 #!/bin/bash
 #!/usr/bin/bash
 
-# to do
-# check the output of porechop for unbarcoded sequences (are they also called BC or none?)
-
 ## Docker ##
   type docker >/dev/null 2>&1 || { echo -e >&2 "${RED}Docker not found. Please run the installation skript, Aborting.${NC}"; exit 1; }
   echo "Docker identified"
 
-## DIR LOCATIONS ##
-  WORKDIRPATH=$(pwd)
-  WORKDIRNAME=${PWD##*/}
-  SCRIPTLOCATION=$(readlink -f "$0")
-  SCRIPTPATH=$(dirname "$SCRIPTLOCATION")
+## OPTIONS ##
+  WORKDIRPATH=$(pwd) # for docker mountpoint (-v)
+  WORKDIRNAME=${PWD##*/} # for docker mountpoint (-v)
+  SCRIPTLOCATION=$(readlink -f "$0") # Script location
+  SCRIPTPATH=$(dirname "$SCRIPTLOCATION") # Repository location
 
-  # Foldernames
-  FAST5="FAST5"         # folder for fast5 raw data
-  FASTQ_raw="FASTQ"     # folder for basecalled fastq (alba out)
-  FASTQ="DEMULTIPLEXED" # demultiplex output folder (porech. out)
-  FASTA_raw="FASTA"     # assembly output folder (assembler out)
-  ASSEMBLY="ASSEMBLY"   # standard location for assembly (standard output)
-  POLISH="POLISHING"    # polish output folder
-
-  mkdir -p ${FAST5} ${FASTQ_raw} ${FASTQ} ${FASTA_raw} ${POLISH} ${ASSEMBLY}
+  # Foldernames, you can change your folder names in the quotes
+    FAST5="FAST5"           # folder for fast5 raw data
+    FASTQ_raw="FASTQ"       # folder for basecalled reads (albacore out)
+    FASTQ="DEMULTIPLEXED"   # demultiplex & trimmed output folder (porechop out)
+    FASTA_raw="FASTA"       # assembly output folder (assembler out)
+    ASSEMBLY="ASSEMBLY"     # Assembly (add a cp command to a assembler to transfer the fasta here)
+    POLISH="POLISHING"      # polish output folder, copies the polished fasta also to ASSEMBLY
+    # created at the start
+    mkdir -p ${FAST5} ${FASTQ_raw} ${FASTQ} ${FASTA_raw} ${POLISH} ${ASSEMBLY}
 
   # Serverlocation
-  fast5files_server="/volume1/sequencing_data/raw_data"
+    fast5files_server="/volume1/sequencing_data/raw_data" # location of each run_dir with fast5 files
   # IP address USERNAME@IP location in cfg
-  IP=$(cat $SCRIPTPATH/cfg)
-  ssh_key="$HOME/.ssh/id_rsa"
+    IP=$(cat $SCRIPTPATH/cfg) # cfg can also put somewere else (e.g. home)
+  # ssh key location
+    ssh_key="$HOME/.ssh/id_rsa" # key location
   # CPU cores
-  CPU=$(lscpu -p | egrep -v '^#' | wc -l)
+    CPU=$(lscpu -p | egrep -v '^#' | wc -l) # can be changed to e.g. CPU="16"
+  # colours, needed for echos
+    RED='\033[0;31m'
+    GRE='\033[0;32m'
+    YEL='\033[0;33m'
+    NC='\033[0m'
 
-  # colours
-  RED='\033[0;31m'
-  #BLU='\033[0;34m'
-  GRE='\033[0;32m'
-  YEL='\033[0;33m'
-  NC='\033[0m'
-
-## PARAMETERS
+## PARAMETERS ##
+  # CONTAINS PARAMETERS FOR PROGRAMS, change at your own risk
   # read length minimum for wtdbg2 assembler
   wtdbg2_readlength="5000"
 
@@ -91,13 +88,12 @@ porechop_demultiplex()
   docker run --rm -it -v ${WORKDIRPATH}:/${WORKDIRNAME} replikation/porechop \
   porechop -t ${CPU} -i /${WORKDIRNAME}/${FASTQ_raw} -b /${WORKDIRNAME}/${FASTQ}
   # remove untagged barcode
-  rm ${FASTQ}/none.fastq 2>/dev/null
   }
 
 ## Assembler ##
 wtdbg2_execute()
   {
-  for fastqfile in $FASTQ/*.fastq; do
+  for fastqfile in ${FASTQ}/*.fastq; do
   filename=$(basename $fastqfile)
     #create assembly map and stuff
     docker run --rm -it -v ${WORKDIRPATH}:/${WORKDIRNAME} replikation/wtdbg2 \
@@ -106,18 +102,21 @@ wtdbg2_execute()
     docker run --rm -it -v ${WORKDIRPATH}:/${WORKDIRNAME} replikation/wtdbg2 \
     wtpoa-cns -t $CPU -i /${WORKDIRNAME}/${FASTA_raw}/${filename%.fastq}.ctg.lay.gz -fo /${WORKDIRNAME}/${ASSEMBLY}/${filename%.fastq}.fa
   done
+  # renaming the "none assembly" to avoid polishing it (usually bwa gets stuck)
+    mv ${FASTQ}/none.fa ${FASTQ}/none.fasta 2>/dev/null
+  # remove empty assembly files
+    find ${WORKDIRPATH}/${ASSEMBLY}/ -size  0 -print0 |xargs -0 rm --
   }
 
 ## Polishing ##
 nanopolish_execute()
-{
+  {
   cp ${ASSEMBLY}/*.fa ${POLISH} # copy raw assemblies to polishing sector
-##UNTESTED
-  # fastq index
-  #for fastqfile in ${FASTQ}/*.fastq; do
-  #  docker run --rm -it -v ${WORKDIRPATH}:/${WORKDIRNAME} replikation/nanopolish \
-  #  nanopolish index -s /${WORKDIRNAME}/${FASTQ}/sequencing_summary.txt -d /${WORKDIRNAME}/${FAST5} /${WORKDIRNAME}/${fastqfile}
-  #done
+  # fastq index; indexed via docker location. should work (only) in a docker mount
+  for fastqfile in ${FASTQ}/*.fastq; do
+    docker run --rm -it -v ${WORKDIRPATH}:/${WORKDIRNAME} replikation/nanopolish \
+    nanopolish index -s /${WORKDIRNAME}/${FASTQ_raw}/sequencing_summary.txt -d /${WORKDIRNAME}/${FAST5} /${WORKDIRNAME}/${fastqfile}
+  done
 
   # align against metagenome
   for assemblyfile in ${POLISH}/*.fa ; do
@@ -138,18 +137,32 @@ nanopolish_execute()
         docker run --rm -it -v ${WORKDIRPATH}:/${WORKDIRNAME} replikation/samtools \
         samtools index /${WORKDIRNAME}/${assemblyfile%.fa}.sorted.bam
    done
-##UNTESTED
   # polishing
-    ##python nanopolish_makerange.py draft.fa | parallel --results nanopolish.results -P 8 \
-    ##nanopolish variants --consensus -o polished.{1}.vcf -w {1} -r reads.fa -b reads.sorted.bam -g draft.fa -t 4 --min-candidate-frequency 0.1
-  # put together
-    ## nanopolish vcf2fasta -g draft.fa polished.*.vcf > ${WORKDIRPATH}/${POLISH}/polished_genome.fasta
-}
+  for assemblyfile in ${POLISH}/*.fa; do
+    	sampleID=$(basename ${assemblyfile%.fa})
+      mkdir -p ${POLISH}/${sampleID}
+    # nanopolish to parallel pipe with variant calling
+      docker run --rm -i -v ${WORKDIRPATH}:/${WORKDIRNAME} replikation/nanopolish \
+      nanopolish_makerange.py /${WORKDIRNAME}/${assemblyfile} |\
+      docker run --rm -i -v ${WORKDIRPATH}:/${WORKDIRNAME} replikation/nanopolish \
+      parallel --results /${WORKDIRNAME}/${POLISH}/${sampleID}/nanopolish.results -P ${CPU} \
+      nanopolish variants --consensus -o /${WORKDIRNAME}/${POLISH}/${sampleID}/polished.{1}.vcf -w {1} \
+      -r /${WORKDIRNAME}/${FASTQ}/${sampleID}.fastq -b /${WORKDIRNAME}/${assemblyfile%.fa}.sorted.bam -g /${WORKDIRNAME}/${assemblyfile} -t 1 -m 0.1
+    # get polished assembly out of results
+      docker run --rm -i -v ${WORKDIRPATH}:/${WORKDIRNAME} replikation/nanopolish \
+      sh -c "nanopolish vcf2fasta -g /${WORKDIRNAME}/${assemblyfile} /${WORKDIRNAME}/${POLISH}/${sampleID}/polished.*.vcf" > ${WORKDIRPATH}/${ASSEMBLY}/${sampleID}_polished.fasta
+  done
+  }
 
-placeholder()
-{
-  echo "placeholder"
-}
+renaming_sequences()
+  {
+  while IFS=$' ' read barcode SeqID; do
+    case "$SeqID" in
+    \S.*) mkdir ${ASSEMBLY}/${SeqID}/ ; mv ${ASSEMBLY}/${barcode}_polished.fasta ${ASSEMBLY}/${SeqID}/; cp ${FAST5}/*.txt ${ASSEMBLY}/${SeqID}/ ;;
+    *) echo "No SeqID for Barcode $barcode found." ;;
+    esac
+  done < "${FAST5}/barcodes.txt"
+  }
 
 ############################
 ### Start of script      ###
@@ -159,16 +172,16 @@ echo "______________________________________________/ Created by Christian Brand
 echo " "
 while true; do
     echo -e "${GRE}What do you want to do? [f] [m] [a] [n] or [e]${NC}"
-    echo "[f] FULL - fast5 download, basecalling, demultiplex, assembly, polishing"
-    echo -e "[a] ASSEMBLY - put one fastq file for each sample in ${YEL}DEMULTIPLEX${NC}"
+    echo -e "[f] ${YEL}FULL-UKJ${NC} - fast5 download, basecalling, demultiplex, assembly, polishing"
+    echo -e "[a] ASSEMBLY - put one fastq file for each sample in ${YEL}${FASTQ}/${NC}"
     echo "[t] for testing modules (ignore for normal usage)"
     read -p "FULL[f] metagenome[m] assembly_only[a] nanopolish[n] exit[e]: " fmante
     case $fmante in
-        [Ff]* ) Downloadinput; albachore_input; Download_FAST5; albachore_execute; porechop_demultiplex; wtdbg2_execute; break;;
-        [Mm]* ) placeholder; break;;
+        [Ff]* ) Downloadinput; albachore_input; Download_FAST5; albachore_execute; porechop_demultiplex; wtdbg2_execute; nanopolish_execute; renaming_sequences; break;;
+        [Mm]* ) renaming_sequences; break;;
         [Aa]* ) wtdbg2_execute; break;;
         [Nn]* ) nanopolish_execute; break;;
-        [Tt]* ) albachore_input; albachore_execute; break;;
+        [Tt]* ) renaming_sequences; break;;
         [Ee]* ) echo "  Exiting script, bye bye"; exit;;
         * ) echo "  Please answer [f] [m] [a] [n] or [e].";;
     esac
