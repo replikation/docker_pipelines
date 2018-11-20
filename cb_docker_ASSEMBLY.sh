@@ -37,9 +37,9 @@
     NC='\033[0m'
 
 ## PARAMETERS ##
-  # CONTAINS PARAMETERS FOR PROGRAMS, change at your own risk
+# CONTAINS PARAMETERS FOR PROGRAMS, change at your own risk
   # read length minimum for wtdbg2 assembler
-  wtdbg2_readlength="5000"
+    wtdbg2_readlength="8000"
 
 ###############
 ### Modules ###
@@ -165,24 +165,25 @@ renaming_sequences()
   }
 
 ############################
-### Start of script      ###
+###   Start of script    ###
 ############################
 echo "                                               _____________________________"
 echo "______________________________________________/ Created by Christian Brandt \___"
 echo " "
 while true; do
-    echo -e "${GRE}What do you want to do? [f] [m] [a] [n] or [e]${NC}"
-    echo -e "[f] ${YEL}FULL-UKJ${NC} - fast5 download, basecalling, demultiplex, assembly, polishing"
-    echo -e "[a] ASSEMBLY - put one fastq file for each sample in ${YEL}${FASTQ}/${NC}"
-    echo "[t] for testing modules (ignore for normal usage)"
-    read -p "FULL[f] metagenome[m] assembly_only[a] nanopolish[n] exit[e]: " fmante
-    case $fmante in
-        [Ff]* ) Downloadinput; albachore_input; Download_FAST5; albachore_execute; porechop_demultiplex; wtdbg2_execute; nanopolish_execute; renaming_sequences; break;;
-        [Mm]* ) renaming_sequences; break;;
-        [Aa]* ) wtdbg2_execute; break;;
+    echo -e "${GRE}What do you want to do? [u] [p] [a] [n] or [e]${NC}"
+    echo -e "[u] ${YEL}UKJ${NC} - fast5 download, albacore, porechop, wtdbg2, nanopolish, rename"
+    echo -e "[p] ${YEL}Pipeline${NC} - albacore, porechop, wtdbg2, nanopolish"
+    echo -e "[a] ${YEL}ASSEMBLY${NC} - porechop, wtdbg2, fastq files in ${FASTQ_raw}/"
+    echo -e "[n] ${YEL}POLISH${NC} - nanopolish, .fast5 in ${FAST5}/, .fastq in ${FASTQ}/, .fa in ${ASSEMBLY}"
+    read -p "UKJ[f] Pipeline[p] assembly[a] polish[n] exit[e]: " upante
+    case $upante in
+        [Uu]* ) Downloadinput; albachore_input; Download_FAST5; albachore_execute; porechop_demultiplex; wtdbg2_execute; nanopolish_execute; renaming_sequences; break;;
+        [Pp]* ) albachore_input; albachore_execute; porechop_demultiplex; wtdbg2_execute; nanopolish_execute; break;;
+        [Aa]* ) porechop_demultiplex; wtdbg2_execute; break;;
         [Nn]* ) nanopolish_execute; break;;
         [Tt]* ) renaming_sequences; break;;
         [Ee]* ) echo "  Exiting script, bye bye"; exit;;
-        * ) echo "  Please answer [f] [m] [a] [n] or [e].";;
+        * ) echo "  Please answer [f] [a] [n] or [e].";;
     esac
 done
