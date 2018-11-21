@@ -24,3 +24,5 @@
 ### cb_docker_ASSEMBLY.sh
 
 ### cb_docker_METAGENOME.sh
+* if you are using the wtdbg2 assembler adjust the -L flag option in the script to your needs
+
