@@ -1,6 +1,4 @@
 #!/usr/bin/env bash
-#!/bin/bash
-#!/usr/bin/bash
 
 ## Docker ##
   type docker >/dev/null 2>&1 || { echo -e >&2 "${RED}Docker not found. Please run the installation skript, Aborting.${NC}"; exit 1; }
