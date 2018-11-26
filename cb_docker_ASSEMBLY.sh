@@ -63,9 +63,9 @@ Download_FAST5()
   }
 
 ## Basecalling ##
-albachore_input()
+albacore_ask()
   {
-  echo -e "${RED}Input for Albachore ${NC}"
+  echo -e "${RED}Input for albacore ${NC}"
   scp ${IP}:${fast5files_server}/${sequence_ID}/flowcell_kit.txt $WORKDIRPATH 2>/dev/null
   cat flowcell_kit.txt 2>/dev/null
   echo -e "Enter flowcell type (e.g. ${GRE}FLO-MIN106${NC} or ${GRE}FLO-MIN107${NC}) and hit [Enter]"
@@ -74,18 +74,33 @@ albachore_input()
   read kittype
   }
 
-albachore_execute()
+albacore_execute()
   {
   docker run --rm -it -v ${WORKDIRPATH}:/${WORKDIRNAME} replikation/albacore \
   read_fast5_basecaller.py -r -i /${WORKDIRNAME}/${FAST5} -f $flowcell -t $CPU -q 0 -o fastq -k ${kittype} -r -s ${WORKDIRNAME}/${FASTQ_raw}/
   }
 
 ## demultiplexing & trimming ##
-porechop_demultiplex()
+porechop_ask()
   {
-  docker run --rm -it -v ${WORKDIRPATH}:/${WORKDIRNAME} replikation/porechop \
-  porechop -t ${CPU} -i /${WORKDIRNAME}/${FASTQ_raw} -b /${WORKDIRNAME}/${FASTQ}
-  # remove untagged barcode
+  read -p "Are you using barcodes? [yes] or [no] " yn
+  case $yn in
+      [Yy]* ) barcodes="1"; return;;
+      [Nn]* ) barcodes="0"; return;;
+      * ) echo "  Please answer [y] or [n].";;
+  esac
+  }
+
+porechop_execute()
+  {
+  if (($barcodes==1))
+  then
+    docker run --rm -it -v ${WORKDIRPATH}:/${WORKDIRNAME} replikation/porechop \
+    porechop -t ${CPU} -i /${WORKDIRNAME}/${FASTQ_raw} -b /${WORKDIRNAME}/${FASTQ}
+  else
+    docker run --rm -it -v ${WORKDIRPATH}:/${WORKDIRNAME} replikation/porechop \
+    porechop -t ${CPU} -i /${WORKDIRNAME}/${FASTQ_raw} -o /${WORKDIRNAME}/${FASTQ}/all_reads.fastq
+  fi
   }
 
 ## Assembler ##
@@ -176,9 +191,9 @@ while true; do
     echo -e "[n] ${YEL}POLISH${NC} - nanopolish, .fast5 in ${FAST5}/, .fastq in ${FASTQ}/, .fa in ${ASSEMBLY}"
     read -p "UKJ[f] Pipeline[p] assembly[a] polish[n] exit[e]: " upante
     case $upante in
-        [Uu]* ) Downloadinput; albachore_input; Download_FAST5; albachore_execute; porechop_demultiplex; wtdbg2_execute; nanopolish_execute; renaming_sequences; break;;
-        [Pp]* ) albachore_input; albachore_execute; porechop_demultiplex; wtdbg2_execute; nanopolish_execute; break;;
-        [Aa]* ) porechop_demultiplex; wtdbg2_execute; break;;
+        [Uu]* ) Downloadinput; albacore_ask; porechop_ask; Download_FAST5; albacore_execute; porechop_execute; wtdbg2_execute; nanopolish_execute; renaming_sequences; break;;
+        [Pp]* ) albacore_ask; porechop_ask; albacore_execute; porechop_execute; wtdbg2_execute; nanopolish_execute; break;;
+        [Aa]* ) porechop_ask; porechop_execute; wtdbg2_execute; break;;
         [Nn]* ) nanopolish_execute; break;;
         [Tt]* ) renaming_sequences; break;;
         [Ee]* ) echo "  Exiting script, bye bye"; exit;;
