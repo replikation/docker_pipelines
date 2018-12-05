@@ -77,7 +77,7 @@ albacore_ask()
 albacore_execute()
   {
   docker run --rm -it -v ${WORKDIRPATH}:/${WORKDIRNAME} replikation/albacore \
-  read_fast5_basecaller.py -r -i /${WORKDIRNAME}/${FAST5} -f $flowcell -t $CPU -q 0 -o fastq -k ${kittype} -r -s ${WORKDIRNAME}/${FASTQ_raw}/
+  read_fast5_basecaller.py -r -i /${WORKDIRNAME}/${FAST5} -f $flowcell -t $CPU -q 0 -o fastq -k ${kittype} -r -s /${WORKDIRNAME}/${FASTQ_raw}/
   }
 
 ## demultiplexing & trimming ##
@@ -167,6 +167,7 @@ nanopolish_execute()
   done
   }
 
+## other ##
 renaming_sequences()
   {
   while IFS=$' ' read barcode SeqID; do

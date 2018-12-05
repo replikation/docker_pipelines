@@ -52,7 +52,7 @@ albacore_ask()
 albacore_execute()
   {
   docker run --rm -it -v ${WORKDIRPATH}:/${WORKDIRNAME} replikation/albacore \
-  read_fast5_basecaller.py -r -i /${WORKDIRNAME}/${FAST5} -f $flowcell -t $CPU -q 0 -o fastq -k ${kittype} -r -s ${WORKDIRNAME}/${FASTQ_raw}/
+  read_fast5_basecaller.py -r -i /${WORKDIRNAME}/${FAST5} -f $flowcell -t $CPU -q 0 -o fastq -k ${kittype} -r -s /${WORKDIRNAME}/${FASTQ_raw}/
   }
 
 ## demultiplexing & trimming ##
@@ -99,7 +99,7 @@ wtdbg2_execute()
     # L2
     docker run --rm -it -v ${WORKDIRPATH}:/${WORKDIRNAME} replikation/wtdbg2 \
     wtdbg2 -t $CPU -x ont -e ${wtdbg2_edge_depth} -S ${wtdbg2_subsampling} --rescue-low-cov-edges -i /${WORKDIRNAME}/${fastqfile} -o /${WORKDIRNAME}/${FASTA_raw}/${filename%.fastq}_${wtdbg2_L2}  -L ${wtdbg2_L2}
-    #L3
+    # L3
     docker run --rm -it -v ${WORKDIRPATH}:/${WORKDIRNAME} replikation/wtdbg2 \
     wtdbg2 -t $CPU -x ont -e ${wtdbg2_edge_depth} -S ${wtdbg2_subsampling} --rescue-low-cov-edges -i /${WORKDIRNAME}/${fastqfile} -o /${WORKDIRNAME}/${FASTA_raw}/${filename%.fastq}_${wtdbg2_L3}  -L ${wtdbg2_L3}
     # create contigs for all 3 runs
@@ -118,10 +118,10 @@ centrifuge_execute()
   for fastqfile in ${FASTQ}/*.fastq; do
     seqID=$(basename ${fastqfile%.fastq})
     docker run --rm -i -v ${WORKDIRPATH}:/${WORKDIRNAME} replikation/centrifuge \
-    centrifuge -p $CPU -x /centrifuge/database/p_compressed -U /${WORKDIRNAME}/${fastqfile} -S /${WORKDIRNAME}/${TAX}/${seqID}.txt --report-file /${WORKDIRNAME}/${TAX}/${seqID}.log
+    centrifuge -p $CPU -x /centrifuge/database/p_compressed -U /${WORKDIRNAME}/${fastqfile} -S /${WORKDIRNAME}/${TAX}/${seqID}_centrifuge_out.txt --report-file /${WORKDIRNAME}/${TAX}/${seqID}_centrifuge_out.log
     # create report for pavian
     docker run --rm -i -v ${WORKDIRPATH}:/${WORKDIRNAME} replikation/centrifuge \
-    centrifuge-kreport -x /centrifuge/database/p_compressed /${WORKDIRNAME}/${TAX}/${seqID}.txt > ${WORKDIRPATH}/${TAX}/${seqID}_pavian_report.csv
+    centrifuge-kreport -x /centrifuge/database/p_compressed /${WORKDIRNAME}/${TAX}/${seqID}_centrifuge_out.txt > ${WORKDIRPATH}/${TAX}/${seqID}_pavian_report.csv
   done
   }
 
