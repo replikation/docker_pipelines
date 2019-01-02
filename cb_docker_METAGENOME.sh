@@ -10,9 +10,9 @@
 
   # Foldernames, you can change your folder names in the quotes
     FAST5="FAST5"           # folder for fast5 raw data
-    FASTQ_raw="FASTQ"       # folder for basecalled reads (albacore out)
-    FASTQ="DEMULTIPLEXED"   # demultiplex & trimmed output folder (porechop out)
-    FASTA_raw="FASTA"       # assembly output folder (assembler out)
+    FASTQ_raw="FASTQ_raw"       # folder for basecalled reads (albacore out)
+    FASTQ="FASTQ_trimmed"   # demultiplex & trimmed output folder (porechop out)
+    FASTA_raw="FASTA_raw"       # assembly output folder (assembler out)
     ASSEMBLY="ASSEMBLY"     # auto cp command from assembler out (FASTA_raw) to this
     TAX="TAXONOMY"          # classification output (centrifuge plasflow ...)
     # created at the start
@@ -40,9 +40,9 @@
 ### Modules ###
 ###############
 ## Basecalling ##
-albacore_ask()
+basecaller_ask()
   {
-  echo -e "${RED}Input for albacore ${NC}"
+  echo -e "${RED}Input for Basecaller ${NC}"
   echo -e "Enter flowcell type (e.g. ${GRE}FLO-MIN106${NC} or ${GRE}FLO-MIN107${NC}) and hit [Enter]"
   read flowcell
   echo -e "Enter_library kit (e.g. ${GRE}SQK-LSK108${NC}, ${GRE}SQK-RBK004${NC} or ${GRE}SQK-RAD004${NC}) and hit [Enter]"
@@ -52,8 +52,17 @@ albacore_ask()
 albacore_execute()
   {
   docker run --rm -it -v ${WORKDIRPATH}:/${WORKDIRNAME} replikation/albacore \
-  read_fast5_basecaller.py -r -i /${WORKDIRNAME}/${FAST5} -f $flowcell -t $CPU -q 0 -o fastq -k ${kittype} -r -s /${WORKDIRNAME}/${FASTQ_raw}/
+  read_fast5_basecaller.py -r -i /${WORKDIRNAME}/${FAST5} -f $flowcell -t $CPU -q 0 -o fastq -k ${kittype} \
+  -r -s /${WORKDIRNAME}/${FASTQ_raw}/
   }
+
+guppy_execute()
+{
+  CPU_half=$(echo $(($CPU / 2)))
+  docker run --rm -it -v ${WORKDIRPATH}:/${WORKDIRNAME} replikation/guppy \
+  guppy_basecaller -r -t ${CPU_half} --runners 2 -i /${WORKDIRNAME}/${FAST5} -s /${WORKDIRNAME}/${FASTQ_raw}/ \
+  --flowcell ${flowcell} --kit ${kittype} --enable_trimming on --trim_strategy dna
+}
 
 ## demultiplexing & trimming ##
 porechop_ask()
@@ -71,21 +80,23 @@ porechop_execute()
   if (($barcodes==1))
   then
     docker run --rm -it -v ${WORKDIRPATH}:/${WORKDIRNAME} replikation/porechop \
-    porechop -t ${CPU} -i /${WORKDIRNAME}/${FASTQ_raw} -b /${WORKDIRNAME}/${FASTQ}
+    -t ${CPU} -i /${WORKDIRNAME}/${FASTQ_raw} -b /${WORKDIRNAME}/${FASTQ}
   else
     docker run --rm -it -v ${WORKDIRPATH}:/${WORKDIRNAME} replikation/porechop \
-    porechop -t ${CPU} -i /${WORKDIRNAME}/${FASTQ_raw} -o /${WORKDIRNAME}/${FASTQ}/all_reads.fastq
+    -t ${CPU} -i /${WORKDIRNAME}/${FASTQ_raw} -o /${WORKDIRNAME}/${FASTQ}/all_reads_trimmed.fastq
   fi
   }
 
 ## Assembler ##
 direct_read_use()
   {
+  echo "filters now sequences greater than 2000 bp into a no-assembly-fasta-file for analysis"
   for fastqfile in ${FASTQ}/*.fastq; do sed -n '1~4s/^@/>/p;2~4p' $fastqfile > ${fastqfile%.fastq}.fasta ; done
   for fastafile in ${FASTQ}/*.fasta; do sed ':a;N;/^>/M!s/\n//;ta;P;D' $fastafile > ${fastafile%.fasta}_oneliner.fasta ; done
-  for fastafile in ${FASTQ}/*_oneliner.fasta; do awk '/^>/ { getline seq } length(seq) >500 { print $0 "\n" seq }' $fastafile > ${fastafile%_oneliner.fasta}_no_assembly.fa ; done
+  for fastafile in ${FASTQ}/*_oneliner.fasta; do awk '/^>/ { getline seq } length(seq) >2000 { print $0 "\n" seq }' $fastafile > ${fastafile%_oneliner.fasta}_no_assembly_reads-only.fa ; done
   mv ${FASTQ}/*.fa ${ASSEMBLY}/
   rm ${FASTQ}/*.fasta
+  echo "No-assembly-fasta-file stored under ${ASSEMBLY}"
   }
 
 wtdbg2_execute()
@@ -150,11 +161,11 @@ while true; do
     echo -e "[p] ${YEL}Plasmids${NC} - plasflow"
     read -p "basecalling[b] meta-assembly[m] taxonomy[t] plasmids[p] or [e]xit: " bmtped
     case $bmtped in
-        [Bb]* ) albacore_ask; porechop_ask; albacore_execute; porechop_execute; break;;
+        [Bb]* ) basecaller_ask; porechop_ask; albacore_execute; porechop_execute; break;;
         [Mm]* ) direct_read_use; wtdbg2_execute; break;;
         [Tt]* ) centrifuge_execute; break;;
         [Pp]* ) plasflow_execute; break;;
-        [Dd]* ) direct_read_use; break;; # Option D is "dev" to try out modules
+        [Dd]* ) basecaller_ask; porechop_ask; guppy_execute; porechop_execute; break;; # Option D is "dev" to try out modules
         [Ee]* ) echo "Exiting script, bye bye"; exit;;
         * ) echo "  Please answer [b] [m] [t] [p] or [e].";;
     esac

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 echo "pulling docker images"
-docker pull replikation/albacore
+docker pull replikation/guppy
 docker pull replikation/porechop
 docker pull replikation/wtdbg2
 docker pull replikation/centrifuge
