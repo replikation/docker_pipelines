@@ -61,7 +61,7 @@ guppy_execute()
   CPU_half=$(echo $(($CPU / 2)))
   docker run --rm -it -v ${WORKDIRPATH}:/${WORKDIRNAME} replikation/guppy \
   guppy_basecaller -r -t ${CPU_half} --runners 2 -i /${WORKDIRNAME}/${FAST5} -s /${WORKDIRNAME}/${FASTQ_raw}/ \
-  --flowcell ${flowcell} --kit ${kittype} --enable_trimming on --trim_strategy dna
+  --flowcell ${flowcell} --kit ${kittype} --enable_trimming on --trim_strategy dna -q 0
 }
 
 ## demultiplexing & trimming ##
@@ -161,7 +161,7 @@ while true; do
     echo -e "[p] ${YEL}Plasmids${NC} - plasflow"
     read -p "basecalling[b] meta-assembly[m] taxonomy[t] plasmids[p] or [e]xit: " bmtped
     case $bmtped in
-        [Bb]* ) basecaller_ask; porechop_ask; albacore_execute; porechop_execute; break;;
+        [Bb]* ) basecaller_ask; porechop_ask; guppy_execute; porechop_execute; break;;
         [Mm]* ) direct_read_use; wtdbg2_execute; break;;
         [Tt]* ) centrifuge_execute; break;;
         [Pp]* ) plasflow_execute; break;;
