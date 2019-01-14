@@ -5,20 +5,16 @@
 ![](https://img.shields.io/badge/licence-GPL--3.0-lightgrey.svg)
 
 ## Installation
-### simple via apt
+### Docker
 
-* install docker via `sudo apt install`
-* add the docker group to your user
-* execute the appropriate dockers (scripts are inside installations_scripts/)
+* install `docker` via `sudo apt install docker.io` 
+	* or `docker-ce` via [this](https://docs.docker.com/install/linux/docker-ce/ubuntu/)
+* add the docker group to your user via `sudo usermod -a -G docker $USER`
+* reboot after this
 
-### better via docker Repository
-
-* either execute the install docker ubuntu script or do it manually
-  * it follows the install routine from docker (adding the docker repo to your computer)
-* this installs the current docker version for ubuntu, also **adds docker group to user**
-* pull all the docker images needed for the scripts
-   * scripts are inside installations_scripts/
-
+### Script-options
+* Scripts are getting all neccessary components automatically if missing
+* all scripts have "options", open them via editor and check the option section
 
 ## Scripts
 ### cb_docker_ASSEMBLY.sh
@@ -26,3 +22,4 @@
 ### cb_docker_METAGENOME.sh
 * if you are using the wtdbg2 assembler adjust the -L flag option in the script to your needs
 
+### cb_docker_ILLUMINA.sh
