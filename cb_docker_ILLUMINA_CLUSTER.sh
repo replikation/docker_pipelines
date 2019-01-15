@@ -66,7 +66,7 @@ read_quality()
       mkdir -p ${ASSEMBLY}/${SampleID}
       # fastqc run
       docker run --rm -it -v ${WORKDIRPATH}:/${WORKDIRNAME} replikation/fastqc \
-      ${WORKDIRNAME}/${F_file} /${WORKDIRNAME}/${R_file} --outdir=/${WORKDIRNAME}/${ASSEMBLY}/${SampleID}
+      ${WORKDIRNAME}/${F_file} /${WORKDIRNAME}/${R_file} -t $CPU --outdir=/${WORKDIRNAME}/${ASSEMBLY}/${SampleID}
     done
   }
 
@@ -91,26 +91,37 @@ unicycler_execute()
 ## sourmash ##
 serv_get_fasta()
   {
-    echo "get all fasta files"
-    scp -r ${IP}:${ASSEMBLY_serv}/*.fasta ${ASSEMBLY}/
+    echo "Getting all Assembly files"
+    mkdir -p ${ASSEMBLY}
+    scp -r ${IP}:${ASSEMBLY_serv}/* ${ASSEMBLY}/
   }
 
 
 sourmash_execute()
   {
-    mkdir -p $CLUSTER/signatures
-    for illuminarun in ${ASSEMBLY}/*/*.fasta ; do
-      SampleID=${illuminarun##*/}
-      docker run --rm -it -v ${WORKDIRPATH}:/${WORKDIRNAME} replikation/sourmash \
-      sourmash compute --scaled 10000 -k 31 /${WORKDIRNAME}/${illuminarun} -o /${WORKDIRNAME}/${CLUSTER}/signatures/${SampleID%.fasta}.sig
-    done
+  #  mkdir -p $CLUSTER/signatures
+  #  for illuminarun in ${ASSEMBLY}/*/*.fasta ; do
+  #    SampleID=${illuminarun##*/}
+  #    docker run --rm -it -v ${WORKDIRPATH}:/${WORKDIRNAME} replikation/sourmash \
+  #    sourmash compute -n 5000 -k 31,51 /${WORKDIRNAME}/${illuminarun} -o /${WORKDIRNAME}/${CLUSTER}/signatures/${SampleID%.fasta}.sig
+    #done
     # index
-    docker run --rm -it -v ${WORKDIRPATH}:/${WORKDIRNAME} replikation/sourmash \
-    sourmash compare /${WORKDIRNAME}/${CLUSTER}/signatures/* -o /${WORKDIRNAME}/${CLUSTER}/signatures/index_sig
+    #docker run --rm -it -v ${WORKDIRPATH}:/${WORKDIRNAME} replikation/sourmash \
+    #/bin/sh -c "sourmash compare /${WORKDIRNAME}/${CLUSTER}/signatures/* -o /${WORKDIRNAME}/${CLUSTER}/signatures/index_sig"
     # plot
-    ########## were are these pdf datafiles landing?
-    docker run --rm -it -v ${WORKDIRPATH}:/${WORKDIRNAME} replikation/sourmash \
-    sourmash plot --pdf --labels /${WORKDIRNAME}/${CLUSTER}/index_sig
+    #docker run --rm -t -v ${WORKDIRPATH}:/${WORKDIRNAME}  replikation/sourmash \
+    #/bin/sh -c "sourmash plot --pdf --labels /${WORKDIRNAME}/${CLUSTER}/signatures/index_sig ; mv *.pdf /${WORKDIRNAME}/${CLUSTER} ; mv *.png /${WORKDIRNAME}/${CLUSTER}"
+
+####OPTION 2
+### trying to get better lables out of it without paths and .fasta
+  mkdir -p $CLUSTER/signatures
+  docker run --rm -it -v ${WORKDIRPATH}/${ASSEMBLY}:/${ASSEMBLY} replikation/sourmash \
+  /bin/sh -c 'mkdir /signatures_tmp && cd /signatures_tmp && \
+              cp /${ASSEMBLY}/*/*.fasta . && \
+              for fasta in *.fasta; do mv ${fasta} ${fasta%.fasta}; done && \
+              for fasta in *; do sourmash compute -n 5000 -k 51 ${fasta} -o ${fasta}.sig; done && \
+              sourmash compare *.sig -o index_sig && \
+              sourmash plot --pdf --labels index_sig && mv *.pdf /${WORKDIRNAME}/${CLUSTER}'
   }
 
 serv_upload()
@@ -137,6 +148,7 @@ while true; do
     echo "    Expects one folder for each illumina run in ./$FASTQ_Wdir/, give folders a meaningful name or ID"
     echo -e "[s] ${YEL}Current Workingdir Clusteranalysis${NC} - sourmash cluster analysis"
     echo "    Expects one folder for each assembly in ./$ASSEMBLY/, give fasta files a meaningful name or ID"
+    echo " "
     read -p "Automated[a] Current Wdir Assembly[c] Sourmash cluster [s] or [e]xit: " acsde
     case $acsde in
         [Aa]* ) serv_check_downl; read_quality; unicycler_execute; serv_get_fasta; sourmash_execute; serv_upload; break;;
