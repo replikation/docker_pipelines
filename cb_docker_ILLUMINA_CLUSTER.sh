@@ -7,20 +7,21 @@
   WORKDIRPATH=$(pwd) # for docker mountpoint (-v)
   WORKDIRNAME=${PWD##*/} # for docker mountpoint (-v)
 
-  # FASTQ prefixes for forward and reverse pairs
-    FPREFIX="_R1_" #write down current prefix to use
-    RPREFIX="_R2_"
+  # FASTQ prefixes for forward and reverse pairs, change the quotes
+    FPREFIX="_R1_" # e.g. FPREFIX="_1.fasta"
+    RPREFIX="_R2_" # e.g. FPREFIX="_2.fasta"
 
   # Foldernames, you can change your folder names in the quotes
-    # Server locations (for option a)
+    # Server locations (for option a - the complete automated workflow)
     FASTQ_serv="/volume1/Shared_Regensburg/FASTQ_Rohdaten"        # RAWDATA on Server
     ASSEMBLY_serv="/volume1/Shared_Regensburg/ASSEMBLIES_fertig"  # ASSEMBLY on Server
     CLUSTER_serv="/volume1/Shared_Regensburg/ANALYSEN"            # CLUSTER Results on Server
     IP=$(cat ~/cfg)                                               # location of USERNAME@IPADRESS
+      # make sure you work with ssh keys!
     # Foldernames in Current Workdir (for all options)
     FASTQ_Wdir="FASTQ"                  # FASTQ location (serv & Wdir)
-    ASSEMBLY="ASSEMBLY"                 # tmp unicylcer output in WS
-    CLUSTER="CLUSTER"                   # cluster analysis
+    ASSEMBLY="ASSEMBLY"                 # Results of Assemblies
+    CLUSTER="CLUSTER"                   # Results cluster analysis
 
   # CPU cores
     CPU=$(lscpu -p | egrep -v '^#' | wc -l) # can be changed to e.g. CPU="16"
@@ -55,7 +56,7 @@ serv_check_downl()
     done < <(printf '%s\n' "$RAW_files")
   }
 
-## QC ##
+## Read QC ##
 read_quality()
   {
     mkdir -p $ASSEMBLY
@@ -68,6 +69,7 @@ read_quality()
       docker run --rm -it -v ${WORKDIRPATH}:/${WORKDIRNAME} replikation/fastqc \
       ${WORKDIRNAME}/${F_file} /${WORKDIRNAME}/${R_file} -t $CPU --outdir=/${WORKDIRNAME}/${ASSEMBLY}/${SampleID}
     done
+    rm -f ${ASSEMBLY}/*/*.zip
   }
 
 ## Assembler ##
@@ -79,55 +81,53 @@ unicycler_execute()
       SampleID=${illuminarun##*/}
       mkdir -p ${ASSEMBLY}/${SampleID}
       # fastqc run
-      docker run --rm -it -v ${WORKDIRPATH}:/${WORKDIRNAME} replikation/unicycler \
-      -1 /${WORKDIRNAME}/$F_file -2 /${WORKDIRNAME}/$R_file -t $CPU -o /${WORKDIRNAME}/${ASSEMBLY}/${SampleID}
+       docker run --rm -it -v ${WORKDIRPATH}:/${WORKDIRNAME} replikation/unicycler \
+       -1 /${WORKDIRNAME}/$F_file -2 /${WORKDIRNAME}/$R_file -t $CPU -o /${WORKDIRNAME}/${ASSEMBLY}/${SampleID}
       # rename assembly file
-      mv ${illuminarun}/assembly.fasta ${illuminarun}/${SampleID}.fasta
+      mv ${ASSEMBLY}/${SampleID}/assembly.fasta ${ASSEMBLY}/${SampleID}/${SampleID}.fasta
     done
     # remove all gfa files
-    rm ${ASSEMBLY}/*/*.gfa
+    rm -f ${ASSEMBLY}/*/*.gfa
   }
 
 ## sourmash ##
 serv_get_fasta()
   {
-    echo "Getting all Assembly files"
-    mkdir -p ${ASSEMBLY}
-    scp -r ${IP}:${ASSEMBLY_serv}/* ${ASSEMBLY}/
+    # this is to supplement the cluster data with more fasta's
+    echo "Downloading Assemblies from Server to temporary signature folder"
+    mkdir -p tmp_signatures
+    scp -r ${IP}:${ASSEMBLY_serv}/*/*.fasta tmp_signatures
   }
-
 
 sourmash_execute()
   {
-  #  mkdir -p $CLUSTER/signatures
-  #  for illuminarun in ${ASSEMBLY}/*/*.fasta ; do
-  #    SampleID=${illuminarun##*/}
-  #    docker run --rm -it -v ${WORKDIRPATH}:/${WORKDIRNAME} replikation/sourmash \
-  #    sourmash compute -n 5000 -k 31,51 /${WORKDIRNAME}/${illuminarun} -o /${WORKDIRNAME}/${CLUSTER}/signatures/${SampleID%.fasta}.sig
-    #done
-    # index
-    #docker run --rm -it -v ${WORKDIRPATH}:/${WORKDIRNAME} replikation/sourmash \
-    #/bin/sh -c "sourmash compare /${WORKDIRNAME}/${CLUSTER}/signatures/* -o /${WORKDIRNAME}/${CLUSTER}/signatures/index_sig"
-    # plot
-    #docker run --rm -t -v ${WORKDIRPATH}:/${WORKDIRNAME}  replikation/sourmash \
-    #/bin/sh -c "sourmash plot --pdf --labels /${WORKDIRNAME}/${CLUSTER}/signatures/index_sig ; mv *.pdf /${WORKDIRNAME}/${CLUSTER} ; mv *.png /${WORKDIRNAME}/${CLUSTER}"
-
-####OPTION 2
-### trying to get better lables out of it without paths and .fasta
-  mkdir -p $CLUSTER/signatures
-  docker run --rm -it -v ${WORKDIRPATH}/${ASSEMBLY}:/${ASSEMBLY} replikation/sourmash \
-  /bin/sh -c 'mkdir /signatures_tmp && cd /signatures_tmp && \
-              cp /${ASSEMBLY}/*/*.fasta . && \
-              for fasta in *.fasta; do mv ${fasta} ${fasta%.fasta}; done && \
-              for fasta in *; do sourmash compute -n 5000 -k 51 ${fasta} -o ${fasta}.sig; done && \
-              sourmash compare *.sig -o index_sig && \
-              sourmash plot --pdf --labels index_sig && mv *.pdf /${WORKDIRNAME}/${CLUSTER}'
+  # creating signatures
+  echo "Starting sourmash, it breaks if two or more seq.IDs are identical."
+  mkdir -p tmp_signatures
+  cp ${ASSEMBLY}/*/*.fasta tmp_signatures/
+  for fasta in tmp_signatures/*.fasta; do mv ${fasta} ${fasta%.fasta}; done
+  cd tmp_signatures/
+  for sequence in *; do
+    docker run --rm -it -v ${WORKDIRPATH}/tmp_signatures:/tmp_signatures replikation/sourmash \
+    /bin/sh -c "cd tmp_signatures/ && sourmash compute -n 5000 -k 31,51 ${sequence} -o ${sequence}.sig"
+  done
+  cd ..
+  # create index out of signatures
+  docker run --rm -it -v ${WORKDIRPATH}:/${WORKDIRNAME} replikation/sourmash \
+  /bin/sh -c "sourmash compare /${WORKDIRNAME}/tmp_signatures/*.sig -o /${WORKDIRNAME}/tmp_signatures/index_sig"
+  echo "comparing done"
+  # plotting files to pdf
+  docker run --rm -it -v ${WORKDIRPATH}:/${WORKDIRNAME} replikation/sourmash \
+  /bin/sh -c "sourmash plot --pdf --labels /${WORKDIRNAME}/tmp_signatures/index_sig && mv *.pdf /${WORKDIRNAME}/${CLUSTER}"
+  # remove temporary signature folder
+  rm -rf tmp_signatures
   }
 
+## file upload ##
 serv_upload()
   {
-    echo "uploading to server"
-    scp -r $ASSEMBLY/*/ $IP:$ASSEMBLY_serv #check how the file structure looks after upload
+    echo "Uploading Cluster and Assembly files to server"
+    scp -r ${ASSEMBLY}/* $IP:$ASSEMBLY_serv #check how the file structure looks after upload
     scp -r ${CLUSTER}/* $IP:$CLUSTER_serv #check how the file structure looks after upload
   }
 
@@ -145,16 +145,16 @@ while true; do
     echo -e "[a] ${YEL}Automated server analysis - assembly, clusteranalysis${NC}"
     echo "    Start in a empty folder, downloads and uploades files automatically"
     echo -e "[c] ${YEL}Current Workingdir Assembly${NC} - unicycler assembly"
-    echo "    Expects one folder for each illumina run in ./$FASTQ_Wdir/, give folders a meaningful name or ID"
+    echo "    Expects one folder for each illumina run in ./$FASTQ_Wdir/, e.g $FASTQ_Wdir/e.coli_1 $FASTQ_Wdir/k.pneu"
     echo -e "[s] ${YEL}Current Workingdir Clusteranalysis${NC} - sourmash cluster analysis"
-    echo "    Expects one folder for each assembly in ./$ASSEMBLY/, give fasta files a meaningful name or ID"
+    echo "    Expects one folder + .fasta for each assembly in ./$ASSEMBLY/, e.g $ASSEMBLY/e.coli_1/e.coli_1.fasta "
     echo " "
     read -p "Automated[a] Current Wdir Assembly[c] Sourmash cluster [s] or [e]xit: " acsde
     case $acsde in
         [Aa]* ) serv_check_downl; read_quality; unicycler_execute; serv_get_fasta; sourmash_execute; serv_upload; break;;
         [Cc]* ) read_quality; unicycler_execute; break;;
         [Ss]* ) sourmash_execute; break;;
-        [Dd]* ) sourmash_execute; break;;
+        [Dd]* ) serv_upload; break;;
         [Ee]* ) echo "Exiting script, bye bye"; exit;;
         * ) echo "  Please answer [a] [c] [s] or [e].";;
     esac
