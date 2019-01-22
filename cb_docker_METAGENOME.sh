@@ -165,7 +165,7 @@ while true; do
         [Mm]* ) direct_read_use; wtdbg2_execute; break;;
         [Tt]* ) centrifuge_execute; break;;
         [Pp]* ) plasflow_execute; break;;
-        [Dd]* ) direct_read_use; wtdbg2_execute; centrifuge_execute; plasflow_execute; break;; # Option D is "dev" to try out modules
+        [Dd]* ) porechop_ask; porechop_execute; direct_read_use; wtdbg2_execute; centrifuge_execute; plasflow_execute; break;; # Option D is "dev" to try out modules
         [Ee]* ) echo "Exiting script, bye bye"; exit;;
         * ) echo "  Please answer [b] [m] [t] [p] or [e].";;
     esac
