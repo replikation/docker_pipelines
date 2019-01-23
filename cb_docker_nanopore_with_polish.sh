@@ -63,9 +63,9 @@ Download_FAST5()
   }
 
 ## Basecalling ##
-albacore_ask()
+basecaller_ask()
   {
-  echo -e "${RED}Input for albacore ${NC}"
+  echo -e "${RED}Input for basecaller ${NC}"
   scp ${IP}:${fast5files_server}/${sequence_ID}/flowcell_kit.txt $WORKDIRPATH 2>/dev/null
   cat flowcell_kit.txt 2>/dev/null
   echo -e "Enter flowcell type (e.g. ${GRE}FLO-MIN106${NC} or ${GRE}FLO-MIN107${NC}) and hit [Enter]"
@@ -77,8 +77,19 @@ albacore_ask()
 albacore_execute()
   {
   docker run --rm -it -v ${WORKDIRPATH}:/${WORKDIRNAME} replikation/albacore \
-  read_fast5_basecaller.py -r -i /${WORKDIRNAME}/${FAST5} -f $flowcell -t $CPU -q 0 -o fastq -k ${kittype} -r -s /${WORKDIRNAME}/${FASTQ_raw}/
+  read_fast5_basecaller.py -r -i /${WORKDIRNAME}/${FAST5} -f $flowcell -t $CPU \
+  -q 0 -o fastq -k ${kittype} -r -s /${WORKDIRNAME}/${FASTQ_raw}/
   }
+
+guppy_cpu()
+  {
+    mkdir ${FASTQ}
+    CPU_half=$(echo $(($CPU / 2)))
+    docker run --rm -it -v ${WORKDIRPATH}:/${WORKDIRNAME} replikation/guppy \
+    guppy_basecaller -r -t ${CPU_half} --runners 2 -i /${WORKDIRNAME}/${FAST5} -s /${WORKDIRNAME}/${FASTQ_raw}/ \
+    --flowcell ${flowcell} --kit ${kittype} --enable_trimming on --trim_strategy dna -q 0
+  }
+
 
 ## demultiplexing & trimming ##
 porechop_ask()
@@ -186,14 +197,14 @@ echo "______________________________________________/ Created by Christian Brand
 echo " "
 while true; do
     echo -e "${GRE}What do you want to do? [u] [p] [a] [n] or [e]${NC}"
-    echo -e "[u] ${YEL}UKJ${NC} - fast5 download, albacore, porechop, wtdbg2, nanopolish, rename"
-    echo -e "[p] ${YEL}Pipeline${NC} - albacore, porechop, wtdbg2, nanopolish"
+    echo -e "[u] ${YEL}UKJ${NC} - fast5 download, guppy_cpu, porechop, wtdbg2, nanopolish, rename"
+    echo -e "[p] ${YEL}Pipeline${NC} - guppy_cpu, porechop, wtdbg2, nanopolish"
     echo -e "[a] ${YEL}ASSEMBLY${NC} - porechop, wtdbg2, fastq files in ${FASTQ_raw}/"
     echo -e "[n] ${YEL}POLISH${NC} - nanopolish, .fast5 in ${FAST5}/, .fastq in ${FASTQ}/, .fa in ${ASSEMBLY}"
     read -p "UKJ[f] Pipeline[p] assembly[a] polish[n] exit[e]: " upante
     case $upante in
-        [Uu]* ) Downloadinput; albacore_ask; porechop_ask; Download_FAST5; albacore_execute; porechop_execute; wtdbg2_execute; nanopolish_execute; renaming_sequences; break;;
-        [Pp]* ) albacore_ask; porechop_ask; albacore_execute; porechop_execute; wtdbg2_execute; nanopolish_execute; break;;
+        [Uu]* ) Downloadinput; basecaller_ask; porechop_ask; Download_FAST5; guppy_cpu; porechop_execute; wtdbg2_execute; nanopolish_execute; renaming_sequences; break;;
+        [Pp]* ) basecaller_ask; porechop_ask; guppy_cpu; porechop_execute; wtdbg2_execute; nanopolish_execute; break;;
         [Aa]* ) porechop_ask; porechop_execute; wtdbg2_execute; break;;
         [Nn]* ) nanopolish_execute; break;;
         [Tt]* ) renaming_sequences; break;;
