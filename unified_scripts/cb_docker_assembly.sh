@@ -44,15 +44,17 @@ wtdbg2_clonal()
 # untested
   output="wtdgb2_assembly"
   mkdir $output
-  for fastqfile in ${nano_reads}/*.fastq; do
-  filename=$(basename $fastqfile)
-    #create assembly map and stuff
-    docker run --rm -it -v ${WORKDIRPATH}:/${WORKDIRNAME} replikation/wtdbg2 \
-    wtdbg2 -t $CPU -i /${WORKDIRNAME}/${fastqfile} -o /${WORKDIRNAME}/${output}/${filename%.fastq} -L $L_wtdbg2
+    docker run --rm -it -v ${WORKDIRPATH}:/${WORKDIRNAME} \
+                        -v $nano_path:/input_nano \
+                        -v ${WORKDIRPATH}/${output}:/output \
+    replikation/wtdbg2 \
+      wtdbg2 -t $CPU -i /input_nano/${nano_file} -o /output/${nano_file%.fastq} -L $L_wtdbg2
     #create contigs
-    docker run --rm -it -v ${WORKDIRPATH}:/${WORKDIRNAME} replikation/wtdbg2 \
-    wtpoa-cns -t $CPU -i /${WORKDIRNAME}/${output}/${filename%.fastq}.ctg.lay.gz -fo /${WORKDIRNAME}/${output}/${filename%.fastq}.fa
-  done
+    docker run --rm -it -v ${WORKDIRPATH}/${output}:/output \
+    replikation/wtdbg2 \
+      wtpoa-cns -t $CPU -i /output/${nano_file%.fastq}/${nano_file%.fastq}.ctg.lay.gz \
+      -fo /output/${nano_file%.fastq}/${nano_file%.fastq}.fa
+# remove ctg.lay.gz
 # polish with medaka
 }
 
@@ -97,19 +99,28 @@ meta_illumina_only()
 meta_hybrid()
 {
   # untested
-    # add a typ unzip bz
-  # unzip illumina
+  output="opera-ms_assembly"
+  # unzip illumina if .gz - if fastq nothing happens
   gunzip $fwd_reads 2>/dev/null
   gunzip $rev_reads 2>/dev/null
-  output="opera-ms_assembly"
   mkdir -p $output
+  # create confige file
   mkdir -p config
   echo "OUTPUT_DIR /output" > config/config.file
   echo "ILLUMINA_READ_1 /input_fwd/${fwd_file%.gz}" >>  config/config.file
   echo "ILLUMINA_READ_2 /input_rev/${rev_file%.gz}" >>  config/config.file
   echo "LONG_READ /input_nano/$nano_file" >>  config/config.file
-
   echo "NUM_PROCESSOR $CPU" >>  config/config.file
+  #OPTIONAL PARAMETERS
+  echo "STRAIN_CLUSTERING YES" >>  config/config.file
+  echo "CONTIG_LEN_THR 500" >>  config/config.file
+  echo "CONTIG_EDGE_LEN 80" >>  config/config.file
+  echo "CONTIG_WINDOW_LEN 340" >>  config/config.file
+  echo "KMER_SIZE 60" >>  config/config.file
+  echo "LONG_READ_MAPPER blasr" >>  config/config.file
+  #echo "CONTIGS_FILE sample_files/sample_contigs.fasta"
+
+  # run assembly
   docker run --rm -it \
     -v ${WORKDIRPATH}:/${WORKDIRNAME} \
     -v $fwd_path:/input_fwd \
@@ -118,6 +129,7 @@ meta_hybrid()
     -v ${WORKDIRPATH}/${output}:/output \
     -v ${WORKDIRPATH}/config/:/config \
     replikation/opera_ms /config/config.file
+  rm -fr config/config.file
 }
 
 #############################
@@ -127,6 +139,7 @@ echo "                                               ___________________________
 echo "______________________________________________/ Created by Christian Brandt \___"
 echo " "
 
+# you could add a output flag
 while getopts '1:2:n:mt:L:' flag; do
     case "${flag}" in
       1) fwd_reads="${OPTARG}" ;;
@@ -140,31 +153,26 @@ while getopts '1:2:n:mt:L:' flag; do
     esac
 done
 
-
 # getting dir names
-fwd_dir=$(dirname "$fwd_reads") 2>/dev/null
-rev_dir=$(dirname "$rev_reads") 2>/dev/null
-nano_dir=$(dirname "$nano_reads") 2>/dev/null
+  fwd_dir=$(dirname "$fwd_reads") 2>/dev/null
+  rev_dir=$(dirname "$rev_reads") 2>/dev/null
+  nano_dir=$(dirname "$nano_reads") 2>/dev/null
 # getting absolute paths
-fwd_path=`cd "$fwd_dir"; pwd` 2>/dev/null
-rev_path=`cd "$rev_dir"; pwd` 2>/dev/null
-nano_path=`cd "$nano_dir"; pwd` 2>/dev/null
+  fwd_path=`cd "$fwd_dir"; pwd` 2>/dev/null
+  rev_path=`cd "$rev_dir"; pwd` 2>/dev/null
+  nano_path=`cd "$nano_dir"; pwd` 2>/dev/null
 # getting filename
-fwd_file=${fwd_reads##*/} 2>/dev/null
-rev_file=${rev_reads##*/} 2>/dev/null
-nano_file=${nano_reads##*/} 2>/dev/null
-
-
+  fwd_file=${fwd_reads##*/} 2>/dev/null
+  rev_file=${rev_reads##*/} 2>/dev/null
+  nano_file=${nano_reads##*/} 2>/dev/null
 
 # Deciding which assembly to use
 # nanopore only clonal
-
 if [ -z "${meta}" ]; then
   if [ -z "${fwd_reads}" ]; then
       if [ -z "${nano_reads}" ]; then usage; else wtdbg2_clonal; fi
   fi
 fi
-
 # Illumina only clonal
 if [ -z "${meta}" ]; then
   if [ -z "${nano_reads}" ]; then
