@@ -40,10 +40,11 @@ usage()
 
 wtdbg2_clonal()
 {
+echo "Starting wtdbg2 assembly"
 # change to correct paths
 # untested
   output="wtdgb2_assembly"
-  mkdir $output
+  mkdir -p $output
     docker run --rm -it -v ${WORKDIRPATH}:/${WORKDIRNAME} \
                         -v $nano_path:/input_nano \
                         -v ${WORKDIRPATH}/${output}:/output \
@@ -52,10 +53,11 @@ wtdbg2_clonal()
     #create contigs
     docker run --rm -it -v ${WORKDIRPATH}/${output}:/output \
     replikation/wtdbg2 \
-      wtpoa-cns -t $CPU -i /output/${nano_file%.fastq}/${nano_file%.fastq}.ctg.lay.gz \
-      -fo /output/${nano_file%.fastq}/${nano_file%.fastq}.fa
+      wtpoa-cns -t $CPU -i /output/${nano_file%.fastq}.ctg.lay.gz \
+      -fo /output/${nano_file%.fastq}.fa
 # remove ctg.lay.gz
-# polish with medaka
+# polish with medaka or unicycler_polish
+exit 0
 }
 
 wtdbg2_meta()
@@ -168,11 +170,13 @@ done
 
 # Deciding which assembly to use
 # nanopore only clonal
+
 if [ -z "${meta}" ]; then
   if [ -z "${fwd_reads}" ]; then
       if [ -z "${nano_reads}" ]; then usage; else wtdbg2_clonal; fi
   fi
 fi
+
 # Illumina only clonal
 if [ -z "${meta}" ]; then
   if [ -z "${nano_reads}" ]; then
