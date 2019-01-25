@@ -104,13 +104,12 @@ meta_illumina_only()
   echo "fwd: $fwd_reads"
   echo "rev: $rev_reads"
   echo "cpu: $CPU"
-  docker run --rm -it \
-    -v ${WORKDIRPATH}:/${WORKDIRNAME} \
-    -v $fwd_path:/input_fwd \
-    -v $rev_path:/input_rev \
-    -v $nano_path:/input_nano \
-    -v ${WORKDIRPATH}/${output}:/output \
-    replikation/meta_spades spades.py
+#  docker run --rm -it \
+#    -v ${WORKDIRPATH}:/${WORKDIRNAME} \
+#    -v $fwd_path:/input_fwd \
+#    -v $rev_path:/input_rev \
+#    -v ${WORKDIRPATH}/${output}:/output \
+#    replikation/spades metaspades.py
 }
 
 meta_hybrid_assembly()
@@ -125,7 +124,7 @@ if [ -z "${opera}" ]; then
     -v $rev_path:/input_rev \
     -v $nano_path:/input_nano \
     -v ${WORKDIRPATH}/${output}:/output \
-    replikation/meta_spades metaspades.py \
+    replikation/spades metaspades.py \
     -1 /input_fwd/${fwd_file} -2 /input_rev/${rev_file} --nanopore /input_nano/${nano_file} -o /output -t $CPU
     exit 0
 else
@@ -162,7 +161,6 @@ else
   rm -fr config/config.file
   exit 0
 fi
-
 }
 
 #############################
