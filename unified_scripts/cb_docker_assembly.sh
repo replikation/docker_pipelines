@@ -28,7 +28,7 @@
 usage()
   {
     echo "Usage:    $SCRIPTNAME [-1 illumina_fwd.fastq ] [-2 illumina_rev.fastq] [-n nanopore.fastq] [OPTIONS]"
-    echo "Supports illumina only [-1] [-2], nanopore only [-n] and hybrid assembly [-1] [-2] [-n]"
+    echo "Supports illumina paired only [-1] [-2], nanopore only [-n] and hybrid assembly [-1] [-2] [-n]"
     echo "Inputs:"
     echo -e "          [-1]    ${YEL}Illumina fastq forward reads${NC}; .fastq or .fastq.gz"
     echo -e "          [-2]    ${YEL}Illumina fastq reverse reads${NC}; .fastq or .fastq.gz"
@@ -64,7 +64,6 @@ exit 0
 
 wtdbg2_meta()
 {
-  # change to correct paths
   # untested
   echo "nano: $nano_reads"
   echo "cpu: $CPU"
@@ -78,45 +77,55 @@ wtdbg2_meta()
 
 unicycler_illumina_only()
 {
-  # untested
-  echo "fwd: $fwd_reads"
-  echo "rev: $rev_reads"
-  echo "cpu: $CPU"
-  echo "execute unicycler with just -1 and -2 and -t"
-  echo "$fwd_path"
-  echo "$rev_path"
+  # untested unicycler
+  echo "Starting unicycler assembly"
+  output="unicycler_assembly"
+  mkdir -p $output
+  docker run --rm -it \
+    -v $fwd_path:/input_fwd \
+    -v $rev_path:/input_rev \
+    -v ${WORKDIRPATH}/${output}:/output \
+    replikation/unicycler \
+    -1 /input_fwd/${fwd_file} -2 /input_rev/${rev_file} -o /output -t $CPU
+    exit 0
 }
 
 unicycler_hybrid()
 {
-  # untested
-  echo "fwd: $fwd_reads"
-  echo "rev: $rev_reads"
-  echo "nano: $nano_reads"
-  echo "cpu: $CPU"
-  echo "execute unicycler with all the flags for hybrid assembly -1 and -2"
+  # untested unicycler
+  echo "Starting unicycler hybrid assembly"
+  output="unicycler_hybrid_assembly"
+  mkdir -p $output
+  docker run --rm -it \
+    -v $fwd_path:/input_fwd \
+    -v $rev_path:/input_rev \
+    -v $nano_path:/input_nano \
+    -v ${WORKDIRPATH}/${output}:/output \
+    replikation/unicycler \
+    -1 /input_fwd/${fwd_file} -2 /input_rev/${rev_file} -l /input_nano/${nano_file} -o /output -t $CPU
+    exit 0
 }
 
 meta_illumina_only()
 {
-  output="meta_spades_assembly"
-  # untested
-  echo "fwd: $fwd_reads"
-  echo "rev: $rev_reads"
-  echo "cpu: $CPU"
-#  docker run --rm -it \
-#    -v ${WORKDIRPATH}:/${WORKDIRNAME} \
-#    -v $fwd_path:/input_fwd \
-#    -v $rev_path:/input_rev \
-#    -v ${WORKDIRPATH}/${output}:/output \
-#    replikation/spades metaspades.py
+  # untested metaspades
+  echo "Starting metaspades assembly"
+  output="metaspades_assembly"
+  mkdir -p $output
+  docker run --rm -it \
+    -v $fwd_path:/input_fwd \
+    -v $rev_path:/input_rev \
+    -v ${WORKDIRPATH}/${output}:/output \
+    replikation/spades metaspades.py \
+    -1 /input_fwd/${fwd_file} -2 /input_rev/${rev_file} -o /output -t $CPU
+    exit 0
 }
 
 meta_hybrid_assembly()
 {
 if [ -z "${opera}" ]; then
-  # untested metaspades
-  echo "Starting metaspades assembly"
+  # tested metaspades
+  echo "Starting metaspades hybrid assembly"
   output="metaspades_assembly"
   mkdir -p $output
   docker run --rm -it \
@@ -129,7 +138,7 @@ if [ -z "${opera}" ]; then
     exit 0
 else
   # tested opera-ms
-  echo "Starting opera-ms assembly"
+  echo "Starting opera-ms hybrid assembly"
   output="opera-ms_assembly"
   mkdir -p $output
   # unzip illumina if .gz - if fastq nothing happens
