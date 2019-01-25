@@ -127,9 +127,10 @@ wtdbg2_execute()
 centrifuge_execute()
   {
   for fastqfile in ${FASTQ}/*.fastq; do
+    echo $fastqfile
     seqID=$(basename ${fastqfile%.fastq})
-    docker run --rm -i -v ${WORKDIRPATH}:/${WORKDIRNAME} replikation/centrifuge \
-    centrifuge -p $CPU -x /centrifuge/database/p_compressed -U /${WORKDIRNAME}/${fastqfile} -S /${WORKDIRNAME}/${TAX}/${seqID}_centrifuge_out.txt --report-file /${WORKDIRNAME}/${TAX}/${seqID}_centrifuge_out.log
+    echo" docker run --rm -i -v ${WORKDIRPATH}:/${WORKDIRNAME} replikation/centrifuge \ "
+    echo "centrifuge -p $CPU -x /centrifuge/database/p_compressed -U /${WORKDIRNAME}/${fastqfile} -S /${WORKDIRNAME}/${TAX}/${seqID}_centrifuge_out.txt --report-file /${WORKDIRNAME}/${TAX}/${seqID}_centrifuge_out.log "
     # create report for pavian
     docker run --rm -i -v ${WORKDIRPATH}:/${WORKDIRNAME} replikation/centrifuge \
     centrifuge-kreport -x /centrifuge/database/p_compressed /${WORKDIRNAME}/${TAX}/${seqID}_centrifuge_out.txt > ${WORKDIRPATH}/${TAX}/${seqID}_pavian_report.csv
