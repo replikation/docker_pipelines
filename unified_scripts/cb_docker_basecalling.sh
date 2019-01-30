@@ -1,8 +1,4 @@
 #!/usr/bin/env bash
-
-## Docker ##
-  type docker >/dev/null 2>&1 || { echo -e >&2 "${RED}Docker not found. Please run the installation skript, Aborting.${NC}"; exit 1; }
-
   # CPU cores
     CPU=$(lscpu -p | egrep -v '^#' | wc -l) # can be changed to e.g. CPU="16"
   # colours, needed for echos
@@ -12,16 +8,16 @@
     ## OPTIONS ##
       WORKDIRPATH=$(pwd) # for docker mountpoint (-v)
       WORKDIRNAME=${PWD##*/} # for docker mountpoint (-v)
-      ${FASTQ}=FASTQ
+      FASTQ=FASTQ
       SCRIPTNAME=$(basename -- "$0")
 ###############
 ##  Modules  ##
 ###############
 usage()
   {
-    echo "Usage:    $SCRIPTNAME [-c fast5folder/ ] [-i fast5folder/]"
+    echo "Usage:    $SCRIPTNAME [-c fast5folder/ ] or [-g fast5folder/]"
     echo -e "          [-c]    ${YEL}cpu based guppy${NC}"
-    echo -e "          [-g]    ${GRE}gpu based guppy${NC}"
+    echo -e "          [-g]    ${GRE}gpu based guppy, uses flipflop${NC}"
     #1>&2; exit 1;
     true>&2; exit 1;
   }
@@ -37,6 +33,7 @@ basecaller_ask()
 
 guppy_cpu()
   {
+    type docker >/dev/null 2>&1 || { echo -e >&2 "${RED}Docker not found. Aborting.${NC}"; exit 1; }
     mkdir ${FASTQ}
     CPU_half=$(echo $(($CPU / 2)))
     docker run --rm -it -v ${WORKDIRPATH}:/${WORKDIRNAME} replikation/guppy \

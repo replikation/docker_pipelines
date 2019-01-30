@@ -37,14 +37,14 @@ usage()
     echo -e "          [-t]    Default: ${GRE}-t ${CPU}${NC} - amount of cores"
     echo -e "          [-L]    Default: ${GRE}-L ${L_wtdbg2}${NC} - nanopore only option, see wtdbg2"
     echo "Metagenome options"
-    echo -e "          [-m]    Add ${GRE}-m${NC} to use metagenome assembler"
+    echo -e "          [-m]    Default: Single organism - Add ${GRE}-m${NC} for metagenome sample"
     echo -e "          [-o]    Default: metaspades - add ${GRE}-o ${NC}to use opera-ms instead"
     exit;
   }
 
 wtdbg2_clonal()
 {
-  # tested
+  # WTDBG2 - tested
   echo "Starting wtdbg2 assembly"
   output="wtdgb2_assembly"
   mkdir -p $output
@@ -77,7 +77,7 @@ wtdbg2_meta()
 
 unicycler_illumina_only()
 {
-  # untested unicycler
+  # UNICYCLER - untested
   echo "Starting unicycler assembly"
   output="unicycler_assembly"
   mkdir -p $output
@@ -92,7 +92,7 @@ unicycler_illumina_only()
 
 unicycler_hybrid()
 {
-  # untested unicycler
+  # UNICYCLER - untested
   echo "Starting unicycler hybrid assembly"
   output="unicycler_hybrid_assembly"
   mkdir -p $output
@@ -108,7 +108,7 @@ unicycler_hybrid()
 
 meta_illumina_only()
 {
-  # untested metaspades
+  # METASPADES - untested
   echo "Starting metaspades assembly"
   output="metaspades_assembly"
   mkdir -p $output
@@ -124,7 +124,7 @@ meta_illumina_only()
 meta_hybrid_assembly()
 {
 if [ -z "${opera}" ]; then
-  # tested metaspades
+  # METASPADES - tested
   echo "Starting metaspades hybrid assembly"
   output="metaspades_assembly"
   mkdir -p $output
@@ -137,14 +137,14 @@ if [ -z "${opera}" ]; then
     -1 /input_fwd/${fwd_file} -2 /input_rev/${rev_file} --nanopore /input_nano/${nano_file} -o /output -t $CPU
     exit 0
 else
-  # tested opera-ms
+  # OPERA-MS - tested
   echo "Starting opera-ms hybrid assembly"
   output="opera-ms_assembly"
   mkdir -p $output
-  # unzip illumina if .gz - if fastq nothing happens
+  # unzip illumina if .gz - if .fastq nothing happens
   gunzip $fwd_reads 2>/dev/null
   gunzip $rev_reads 2>/dev/null
-  # create confige file
+  # create config file
   mkdir -p config
   echo "OUTPUT_DIR /output" > config/config.file
   echo "ILLUMINA_READ_1 /input_fwd/${fwd_file%.gz}" >>  config/config.file
@@ -167,7 +167,7 @@ else
     -v ${WORKDIRPATH}/${output}:/output \
     -v ${WORKDIRPATH}/config/:/config \
     replikation/opera_ms /config/config.file
-  rm -fr config/config.file
+  rm -fr config/
   exit 0
 fi
 }
@@ -207,40 +207,38 @@ done
   rev_file=${rev_reads##*/} 2>/dev/null
   nano_file=${nano_reads##*/} 2>/dev/null
 echo " "
-# Deciding which assembly to use
-# nanopore only clonal
-
+# Deciding which assembly aproach to use
+## nanopore only clonal
 if [ -z "${meta}" ]; then
   if [ -z "${fwd_reads}" ]; then
       if [ -z "${nano_reads}" ]; then usage; else wtdbg2_clonal; fi
   fi
 fi
-
-# Illumina only clonal
+## Illumina only clonal
 if [ -z "${meta}" ]; then
   if [ -z "${nano_reads}" ]; then
       if [ -z "${fwd_reads}" ]; then usage; else unicycler_illumina_only; fi
   fi
 fi
-# Hybrid assembly clonal
+## Hybrid assembly clonal
 if [ -z "${meta}" ]; then
   if [ ! -z "${nano_reads}" ]; then
       if [ ! -z "${fwd_reads}" ]; then unicycler_hybrid; fi
   fi
 fi
-# nanopore only metagenome
+## nanopore only metagenome
 if [ ! -z "${meta}" ]; then
   if [ -z "${fwd_reads}" ]; then
     if [ -z "${nano_reads}" ]; then usage; else wtdbg2_meta; fi
   fi
 fi
-# Illumina only metagenome
+## Illumina only metagenome
 if [ ! -z "${meta}" ]; then
   if [ -z "${nano_reads}" ]; then
     if [ -z "${fwd_reads}" ]; then usage; else meta_illumina_only; fi
   fi
 fi
-# Hybridassembly metagenome
+## Hybridassembly metagenome
 if [ ! -z "${meta}" ]; then
   if [ ! -z "${nano_reads}" ]; then
     if [ ! -z "${fwd_reads}" ]; then meta_hybrid_assembly; fi
