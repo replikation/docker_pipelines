@@ -8,7 +8,7 @@
     fwd_reads=''
     rev_reads=''
     nano_reads=''
-    L_wtdbg2='10000'
+    L_wtdbg2='4.6m'
   # CPU cores
     CPU=$(lscpu -p | egrep -v '^#' | wc -l) # can be changed to e.g. CPU="16"
   # colours, needed for echos
@@ -18,7 +18,6 @@
     GRE='\033[0;32m'
     ## Parameters ##
       WORKDIRPATH=$(pwd) # for docker mountpoint (-v)
-      WORKDIRNAME=${PWD##*/} # for docker mountpoint (-v)
       SCRIPTNAME=$(basename -- "$0")
 
 ###############
@@ -35,7 +34,7 @@ usage()
     echo -e "          [-n]    ${YEL}Nanopore fastq file${NC}; .fastq"
     echo "Options:"
     echo -e "          [-t]    Default: ${GRE}-t ${CPU}${NC} - amount of cores"
-    echo -e "          [-L]    Default: ${GRE}-L ${L_wtdbg2}${NC} - nanopore only option, see wtdbg2"
+    echo -e "          [-L]    Default: ${GRE}-L ${L_wtdbg2}${NC} - approx. genome length"
     echo "Metagenome options"
     echo -e "          [-m]    Default: Single organism - Add ${GRE}-m${NC} for metagenome sample"
     echo -e "          [-o]    Default: metaspades - add ${GRE}-o ${NC}to use opera-ms instead"
@@ -44,35 +43,28 @@ usage()
 
 wtdbg2_clonal()
 {
-  # WTDBG2 - tested
+  # WTDBG2 - untested
   echo "Starting wtdbg2 assembly"
   output="wtdgb2_assembly"
   mkdir -p $output
-    docker run --rm -it -v $nano_path:/input_nano \
-                        -v ${WORKDIRPATH}/${output}:/output \
-    replikation/wtdbg2 \
-      wtdbg2 -t $CPU -i /input_nano/${nano_file} -o /output/${nano_file%.fastq} -L $L_wtdbg2
+    docker run --rm -it \
+      -v $nano_path:/input_nano \
+      -v ${WORKDIRPATH}/${output}:/output \
+      replikation/wtdbg2 \
+      wtdbg2 -x ont -t $CPU -g $L_wtdbg2 -i /input_nano/${nano_file} -o /output/${nano_file%.fastq}
     #create contigs
-    docker run --rm -it -v ${WORKDIRPATH}/${output}:/output \
-    replikation/wtdbg2 \
+    docker run --rm -it \
+      -v ${WORKDIRPATH}/${output}:/output \
+      replikation/wtdbg2 \
       wtpoa-cns -t $CPU -i /output/${nano_file%.fastq}.ctg.lay.gz \
       -fo /output/${nano_file%.fastq}.fa
-# remove ctg.lay.gz
-# polish with medaka or unicycler_polish
 exit 0
 }
 
 wtdbg2_meta()
 {
-  # untested
-  echo "nano: $nano_reads"
-  echo "cpu: $CPU"
-  echo "needs centrifuge pre clustering"
-  echo "execute wtdbg2 assembler with special edges and stuff"
-  echo "medaka polish would be usefull maybe"
-  #docker run --rm -it -v ${WORKDIRPATH}:/${WORKDIRNAME} replikation/wtdbg2 \
-  #wtdbg2 -t $CPU -x ont -e ${wtdbg2_edge_depth} -S ${wtdbg2_subsampling} --rescue-low-cov-edges -i /${WORKDIRNAME}/${fastqfile} -o /${WORKDIRNAME}/${FASTA_raw}/${filename%.fastq}_${wtdbg2_L1}  -L ${wtdbg2_L1}
-  # L2
+  # WTDBG2 - untested
+  echo "canu is actually best for metagenome assembly"
 }
 
 unicycler_illumina_only()
@@ -97,8 +89,8 @@ unicycler_hybrid()
   output="unicycler_hybrid_assembly"
   mkdir -p $output
   docker run --rm -it \
-    -v $fwd_path:/input_fwd \
-    -v $rev_path:/input_rev \
+    -v ${fwd_path}:/input_fwd \
+    -v ${rev_path}:/input_rev \
     -v $nano_path:/input_nano \
     -v ${WORKDIRPATH}/${output}:/output \
     replikation/unicycler \
@@ -113,11 +105,11 @@ meta_illumina_only()
   output="metaspades_assembly"
   mkdir -p $output
   docker run --rm -it \
-    -v $fwd_path:/input_fwd \
-    -v $rev_path:/input_rev \
+    -v ${fwd_path}:/input_fwd \
+    -v ${rev_path}:/input_rev \
     -v ${WORKDIRPATH}/${output}:/output \
     replikation/spades metaspades.py \
-    -1 /input_fwd/${fwd_file} -2 /input_rev/${rev_file} -o /output -t $CPU
+    -1 /input_fwd/${fwd_file} -2 /input_rev/${rev_file} -o /output -t ${CPU}
     exit 0
 }
 
@@ -160,7 +152,6 @@ else
   #echo "CONTIGS_FILE sample_files/sample_contigs.fasta"
   # run assembly
   docker run --rm -it \
-    -v ${WORKDIRPATH}:/${WORKDIRNAME} \
     -v $fwd_path:/input_fwd \
     -v $rev_path:/input_rev \
     -v $nano_path:/input_nano \
