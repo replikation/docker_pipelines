@@ -8,9 +8,10 @@
     fwd_reads=''
     rev_reads=''
     nano_reads=''
-    L_wtdbg2='4.6m'
+    gsize='4.6m'
+    label='results'
   # CPU cores
-    CPU=$(lscpu -p | egrep -v '^#' | wc -l) # can be changed to e.g. CPU="16"
+    CPU=$(lscpu -p | egrep -v '^#' | wc -l) # can be changed to e.g. CPU=16
   # colours, needed for echos
     RED='\033[0;31m'
     YEL='\033[0;33m'
@@ -27,45 +28,77 @@
 usage()
   {
     echo "Usage:    $SCRIPTNAME [-1 illumina_fwd.fastq ] [-2 illumina_rev.fastq] [-n nanopore.fastq] [OPTIONS]"
-    echo "Supports illumina paired only [-1] [-2], nanopore only [-n] and hybrid assembly [-1] [-2] [-n]"
+    echo "          Supports illumina paired only [-1] [-2], nanopore only [-n] and hybrid assembly [-1] [-2] [-n]"
     echo "Inputs:"
     echo -e "          [-1]    ${YEL}Illumina fastq forward reads${NC}; .fastq or .fastq.gz"
     echo -e "          [-2]    ${YEL}Illumina fastq reverse reads${NC}; .fastq or .fastq.gz"
     echo -e "          [-n]    ${YEL}Nanopore fastq file${NC}; .fastq"
     echo "Options:"
     echo -e "          [-t]    Default: ${GRE}-t ${CPU}${NC} - amount of cores"
-    echo -e "          [-L]    Default: ${GRE}-L ${L_wtdbg2}${NC} - approx. genome length"
+    echo -e "          [-L]    Default: ${GRE}-L ${gsize}${NC} - approx. genome length"
+    echo -e "          [-l]    Label added to output dir e.g. ${GRE}-l Seq_run_2018${NC}"
     echo "Metagenome options"
-    echo -e "          [-m]    Default: Single organism - Add ${GRE}-m${NC} for metagenome sample"
+    echo -e "          [-m]    Default: Single organism - Add ${GRE}-m${NC} for metagenomic DNA"
     echo -e "          [-o]    Default: metaspades - add ${GRE}-o ${NC}to use opera-ms instead"
     exit;
   }
 
 wtdbg2_clonal()
 {
-  # WTDBG2 - untested
+  # WTDBG2 & polishing tested
   echo "Starting wtdbg2 assembly"
-  output="wtdgb2_assembly"
+  output="wtdgb2_metagenome_${label}"
   mkdir -p $output
-    docker run --rm -it \
-      -v $nano_path:/input_nano \
+    docker run --rm -it --cpus="${CPU}"\
+      -v ${nano_path}:/input_nano \
       -v ${WORKDIRPATH}/${output}:/output \
-      replikation/wtdbg2 \
-      wtdbg2 -x ont -t $CPU -g $L_wtdbg2 -i /input_nano/${nano_file} -o /output/${nano_file%.fastq}
-    #create contigs
-    docker run --rm -it \
+      replikation/wtdbg2_polish \
+      wtdbg2 -g $gsize -x ont -L 7000 -t $CPU -i /input_nano/${nano_file} -o /output/draft
+    # create contigs
+    docker run --rm -it --cpus="${CPU}"\
       -v ${WORKDIRPATH}/${output}:/output \
-      replikation/wtdbg2 \
-      wtpoa-cns -t $CPU -i /output/${nano_file%.fastq}.ctg.lay.gz \
-      -fo /output/${nano_file%.fastq}.fa
-exit 0
+      replikation/wtdbg2_polish \
+      wtpoa-cns -t $CPU -i /output/draft.ctg.lay.gz -fo /output/draft.fa
+  # Polishing
+  echo "Starting wtdbg2 polishing"
+  docker run --rm -it --cpus="${CPU}"\
+    -v ${nano_path}:/input_nano \
+    -v ${WORKDIRPATH}/${output}:/output \
+    replikation/wtdbg2_polish \
+    sh -c "minimap2 -t $CPU -x map-pb -a /output/draft.fa /input_nano/${nano_file} | samtools view -Sb - > draft.ctg.map.bam \
+    && samtools sort draft.ctg.map.bam > /output/draft.ctg.map.srt.bam \
+    && samtools view /output/draft.ctg.map.srt.bam | wtpoa-cns -t $CPU -d /output/draft.fa -i - -fo /output/polished.assembly.fa"
+  exit 0
 }
 
 wtdbg2_meta()
 {
-  # WTDBG2 - untested
-  echo "canu is actually best for metagenome assembly"
+  # WTDBG2 & polishing tested
+  echo "Starting wtdbg2 metagenome assembly"
+  output="wtdgb2_metagenome_${label}"
+  mkdir -p $output
+    docker run --rm -it --cpus="${CPU}"\
+      -v ${nano_path}:/input_nano \
+      -v ${WORKDIRPATH}/${output}:/output \
+      replikation/wtdbg2_polish \
+      wtdbg2 -p 23 -AS 2 -s 0.05 -L 5000 -e 3 -t $CPU -i /input_nano/${nano_file} -o /output/draft
+    #create contigs
+    docker run --rm -it --cpus="${CPU}"\
+      -v ${WORKDIRPATH}/${output}:/output \
+      replikation/wtdbg2_polish \
+      wtpoa-cns -t $CPU -i /output/draft.ctg.lay.gz -fo /output/draft.fa
+  # Polishing
+  echo "Starting wtdbg2 polishing"
+  docker run --rm -it --cpus="${CPU}"\
+    -v ${nano_path}:/input_nano \
+    -v ${WORKDIRPATH}/${output}:/output \
+    replikation/wtdbg2_polish \
+    sh -c "minimap2 -t $CPU -x map-pb -a /output/draft.fa /input_nano/${nano_file} | samtools view -Sb - > draft.ctg.map.bam \
+    && samtools sort draft.ctg.map.bam > /output/draft.ctg.map.srt.bam \
+    && samtools view /output/draft.ctg.map.srt.bam | wtpoa-cns -t $CPU -d /output/draft.fa -i - -fo /output/polished.assembly.fa"
+  exit 0
 }
+
 
 unicycler_illumina_only()
 {
@@ -79,14 +112,14 @@ unicycler_illumina_only()
     -v ${WORKDIRPATH}/${output}:/output \
     replikation/unicycler \
     -1 /input_fwd/${fwd_file} -2 /input_rev/${rev_file} -o /output -t $CPU
-    exit 0
+  exit 0
 }
 
 unicycler_hybrid()
 {
   # UNICYCLER - untested
   echo "Starting unicycler hybrid assembly"
-  output="unicycler_hybrid_assembly"
+  output="unicycler_hybrid_${label}"
   mkdir -p $output
   docker run --rm -it \
     -v ${fwd_path}:/input_fwd \
@@ -118,7 +151,7 @@ meta_hybrid_assembly()
 if [ -z "${opera}" ]; then
   # METASPADES - tested
   echo "Starting metaspades hybrid assembly"
-  output="metaspades_assembly"
+  output="metaspades_hybrid_${label}"
   mkdir -p $output
   docker run --rm -it \
     -v $fwd_path:/input_fwd \
@@ -131,7 +164,7 @@ if [ -z "${opera}" ]; then
 else
   # OPERA-MS - tested
   echo "Starting opera-ms hybrid assembly"
-  output="opera-ms_assembly"
+  output="opera-ms_hybrid_${label}"
   mkdir -p $output
   # unzip illumina if .gz - if .fastq nothing happens
   gunzip $fwd_reads 2>/dev/null
@@ -171,33 +204,35 @@ echo "______________________________________________/ Created by Christian Brand
 echo " "
 
 # you could add a output flag
-while getopts '1:2:n:mt:L:o' flag; do
+while getopts '1:2:n:mt:L:ohl:' flag; do
     case "${flag}" in
       1) fwd_reads="${OPTARG}" ;;
       2) rev_reads="${OPTARG}" ;;
       n) nano_reads="${OPTARG}" ;;
       m) meta='true' ;;
+      l) label="${OPTARG}" ;;
       t) CPU="${OPTARG}" ;;
-      L) L_wtdbg2="${OPTARG}" ;;
+      L) gsize="${OPTARG}" ;;
       o) opera='true';;
+      h) usage;;
       *) usage
          exit 1 ;;
     esac
 done
 
 # getting dir names
-  fwd_dir=$(dirname "$fwd_reads") 2>/dev/null
-  rev_dir=$(dirname "$rev_reads") 2>/dev/null
-  nano_dir=$(dirname "$nano_reads") 2>/dev/null
+  fwd_dir=$(dirname "$fwd_reads" 2>/dev/null)
+  rev_dir=$(dirname "$rev_reads" 2>/dev/null)
+  nano_dir=$(dirname "$nano_reads" 2>/dev/null)
 # getting absolute paths
-  fwd_path=$(cd $fwd_dir && pwd) 2>/dev/null
-  rev_path=$(cd "$rev_dir" && pwd) 2>/dev/null
-  nano_path=$(cd "$nano_dir" && pwd) 2>/dev/null
+  fwd_path=$(cd "$fwd_dir" 2>/dev/null && pwd)
+  rev_path=$(cd "$rev_dir" 2>/dev/null && pwd)
+  nano_path=$(cd "$nano_dir" 2>/dev/null && pwd)
 # getting filename
-  fwd_file=${fwd_reads##*/} 2>/dev/null
-  rev_file=${rev_reads##*/} 2>/dev/null
-  nano_file=${nano_reads##*/} 2>/dev/null
-echo " "
+  fwd_file=${fwd_reads##*/}
+  rev_file=${rev_reads##*/}
+  nano_file=${nano_reads##*/}
+
 # Deciding which assembly aproach to use
 ## nanopore only clonal
 if [ -z "${meta}" ]; then

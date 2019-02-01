@@ -43,7 +43,8 @@ usage()
     echo "Options:"
     echo -e "          [-t]    Default: ${GRE}-t ${CPU}${NC} - amount of cores"
     echo -e "          [-l]    Label added to output dir e.g. ${GRE}-l Seq_run_2018${NC}"
-    echo "Analysis options - add flag(s) to use one or more of these"
+    echo "Analysis options:"
+    echo "  Add flag(s) to use one or more of these"
     echo -e "          [-B]    vamb, metagenome binning of contig file; Input: ${YEL}-a -b${NC}"
     echo -e "          [-L]    centrifuge, taxonomic classification of Long Reads; Input: ${YEL}-n${NC}"
     echo -e "          [-C]    sourmash, taxonomic classification on contigs; Input: ${YEL}-a -D${NC}"
@@ -107,7 +108,7 @@ QC_nanopore()
   echo "Starting nanopore QC"
   output="nanoporeQC_${label}"
   mkdir -p $output
-  docker run --rm -it \
+  docker run --rm -it --cpus="${CPU}" \
     -v ${WORKDIRPATH}/${output}:/output \
     -v ${seqSum_path}:/QCTutorial/RawData \
     replikation/nanopore_qc \
