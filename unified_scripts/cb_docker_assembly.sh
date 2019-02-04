@@ -81,7 +81,7 @@ wtdbg2_meta()
       -v ${nano_path}:/input_nano \
       -v ${WORKDIRPATH}/${output}:/output \
       replikation/wtdbg2_polish \
-      wtdbg2 -p 23 -AS 2 -s 0.05 -L 5000 -e 3 -t $CPU -i /input_nano/${nano_file} -o /output/draft
+      wtdbg2 -p 23 -AS 2 -s 0.05 -e 3 -t $CPU -i /input_nano/${nano_file} -o /output/draft
     #create contigs
     docker run --rm -it --cpus="${CPU}"\
       -v ${WORKDIRPATH}/${output}:/output \
