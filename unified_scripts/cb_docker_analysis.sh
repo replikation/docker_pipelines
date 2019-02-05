@@ -62,10 +62,11 @@ centrifuge_execute()
     -v $nano_path:/input \
     -v $WORKDIRPATH/${output}:/output \
     replikation/centrifuge \
-    centrifuge -p $CPU -x /centrifuge/database/p_compressed \
+    centrifuge -p $CPU -x /centrifuge/database/p_compressed -k 1 --min-hitlen 16 \
     -U /input/$nano_name -S /output/centrifuge_out.txt --report-file /output/centrifuge_out.log
     # create report for pavian
     docker run --rm -i -v $WORKDIRPATH/${output}:/output replikation/centrifuge \
+    --min-score 150 --min-length 50 \
     centrifuge-kreport -x /centrifuge/database/p_compressed /output/centrifuge_out.txt \
     > $WORKDIRPATH/${output}/${nano_name%.*}_pavian_report.csv
   echo "Results saved to $output"
