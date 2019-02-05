@@ -13,6 +13,7 @@
     tax_read=''
     tax_assembly=''
     nanoQC=''
+    centrif_DB=''
     label='results'
   # CPU cores
     CPU=$(lscpu -p | egrep -v '^#' | wc -l) # can be changed to e.g. CPU="16"
@@ -46,7 +47,8 @@ usage()
     echo "Analysis options:"
     echo "  Add flag(s) to use one or more of these"
     echo -e "          [-B]    vamb, metagenome binning of contig file; Input: ${YEL}-a -b${NC}"
-    echo -e "          [-L]    centrifuge, taxonomic classification of Long Reads; Input: ${YEL}-n${NC}"
+    echo -e "          [-L]    centrifuge, taxonomic classification of Long Reads (bacteria & archaea); Input: ${YEL}-n${NC}"
+    echo -e "              [-k] to use bacteria, viruses, human and archaea database instead "
     echo -e "          [-C]    sourmash, taxonomic classification on contigs; Input: ${YEL}-a -D${NC}"
     echo -e "          [-Q]    nanopore QC, QC results for reads; Input: ${YEL}-s${NC}"
     exit;
@@ -54,9 +56,10 @@ usage()
 
 centrifuge_execute()
 {
-  # untested
-  echo "Starting centrifuge"
-  output="centrifuge_${label}"
+  # tested
+  if [ -z "${centrif_DB}" ]; then
+  echo "Starting centrifuge for bacteria and archaea"
+  output="centrifuge_bac.arch_${label}"
   mkdir -p $output
   docker run --rm -i \
     -v $nano_path:/input \
@@ -66,10 +69,25 @@ centrifuge_execute()
     -U /input/$nano_name -S /output/centrifuge_out.txt --report-file /output/centrifuge_out.log
     # create report for pavian
     docker run --rm -i -v $WORKDIRPATH/${output}:/output replikation/centrifuge \
-    --min-score 150 --min-length 50 \
-    centrifuge-kreport -x /centrifuge/database/p_compressed /output/centrifuge_out.txt \
+    centrifuge-kreport -x /centrifuge/database/p_compressed --min-score 300 --min-length 500 /output/centrifuge_out.txt \
     > $WORKDIRPATH/${output}/${nano_name%.*}_pavian_report.csv
   echo "Results saved to $output"
+else
+  echo "Starting centrifuge for bacteria, viruses, human and archaea"
+  output="centrifuge_bac.arch.vir.hum_${label}"
+  mkdir -p $output
+  docker run --rm -i \
+    -v $nano_path:/input \
+    -v $WORKDIRPATH/${output}:/output \
+    replikation/centrifuge_all \
+    centrifuge -p $CPU -x /centrifuge/database/p_compressed+h+v -k 1 --min-hitlen 16 \
+    -U /input/$nano_name -S /output/centrifuge_out.txt --report-file /output/centrifuge_out.log
+    # create report for pavian
+    docker run --rm -i -v $WORKDIRPATH/${output}:/output replikation/centrifuge_all \
+    centrifuge-kreport -x /centrifuge/database/p_compressed+h+v --min-score 300 --min-length 500 /output/centrifuge_out.txt \
+    > $WORKDIRPATH/${output}/${nano_name%.*}_pavian_report.csv
+  echo "Results saved to $output"
+fi
 }
 
 sourmash_execute()
@@ -126,7 +144,7 @@ echo " "
 echo -e "${YEL}$SCRIPTNAME -h ${NC}for help/usage"
 echo " "
 # you could add a output flag
-while getopts 'a:b:n:s:D:t:l:BLCQh' flag; do
+while getopts 'a:b:n:s:D:t:l:BLCQkh' flag; do
     case "${flag}" in
       a) assembly_file="${OPTARG}" ;;
       b) bam_file="${OPTARG}" ;;
@@ -139,6 +157,7 @@ while getopts 'a:b:n:s:D:t:l:BLCQh' flag; do
       L) tax_read='true';;
       C) tax_assembly='true';;
       Q) nanoQC='true';;
+      k) centrif_DB='true';;
       h) usage;;
       *) usage
          exit 1 ;;
