@@ -8,7 +8,7 @@
     ## OPTIONS ##
       WORKDIRPATH=$(pwd) # for docker mountpoint (-v)
       WORKDIRNAME=${PWD##*/} # for docker mountpoint (-v)
-      FASTQ=FASTQ
+      FASTQ=fastq
       SCRIPTNAME=$(basename -- "$0")
 ###############
 ##  Modules  ##

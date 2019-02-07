@@ -114,11 +114,23 @@ sourmash_execute()
 
 binning_execute()
 {
-  echo "vamb"
-  output="vamb_${label}"
-  echo "-v $assembly_path:/input"
-  echo "-v $bam_path:/bam_files"
-  echo "-v $WORKDIRPATH/$output:/output"
+  echo "metabat"
+  output="metabat_${label}"
+  docker run --rm -it \
+    -v $assembly_path:/input \
+    -v $bam_path:/bam_files \
+    -v $WORKDIRPATH/${output}:/output \
+    metabat/metabat \
+    sh - "runMetaBat.sh -m 1500 final.contigs.fa tara.bam \
+    && mv *.metabat-bins1500 /output/metabat_results "
+
+  # sudo checkm data setRoot ~/.local/data/checkm
+  # checkm lineage_wf -x fa metabat checkm/
+  # checkm bin_qa_plot -x fa checkm metabat plots
+  #tells you which organism, saves under checkm/lineage needs folder checkm
+  # checkm qa checkm/lineage.ms checkm
+  # plots its
+  # checkm bin_qa_plot -x fa checkm metabat plots
 }
 
 QC_nanopore()
