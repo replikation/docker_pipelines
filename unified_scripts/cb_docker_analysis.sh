@@ -243,19 +243,19 @@ done
   seqSum_dir=$(dirname "$seqSum") 2>/dev/null
   #sour_dir=$(dirname "$sour_DB") 2>/dev/null
 # getting absolute paths
-  assembly_path=$(cd $assembly_dir && pwd) 2>/dev/null
-  nano_path=$(cd "$nano_dir" && pwd) 2>/dev/null
+  assembly_path=$(cd $assembly_dir 2>/dev/null && pwd)
+  nano_path=$(cd "$nano_dir" 2>/dev/null && pwd)
   fwd_path=$(cd "$fwd_dir" 2>/dev/null && pwd)
   rev_path=$(cd "$rev_dir" 2>/dev/null && pwd)
-  seqSum_path=$(cd "$seqSum_dir" && pwd) 2>/dev/null
-  #sour_path=$(cd "$sour_dir" && pwd) 2>/dev/null
+  seqSum_path=$(cd "$seqSum_dir" 2>/dev/null && pwd)
+  #sour_path=$(cd "$sour_dir" 2>/dev/null && pwd)
 # getting filename
   assembly_name=${assembly_file##*/}
   nano_name=${nano_reads##*/}
   fwd_file=${fwd_reads##*/}
   rev_file=${rev_reads##*/}
   #DB_name=${sour_DB##*/}
-echo " "
+
 #############################
 ## Choose Executable(s)    ##
 #############################
