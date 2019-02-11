@@ -170,10 +170,10 @@ done
   nano_path=$(cd "$nano_reads" 2>/dev/null && pwd)
 
 if [ ! -z "${batch_mode}" ]; then
-  if [ ! -z "${nano_reads}" ]; then guppy_batch_gpu ; else exit ; fi
+  if [ ! -z "${nano_reads}" ]; then guppy_batch_gpu ; fi
 fi
 
-if [ ! -z "${sum_mode}" ]; then collect ; else exit ; fi
+if [ ! -z "${sum_mode}" ]; then collect ; fi
 
 if [ ! -z "${cpu_mode}" ]; then
   if [ ! -z "${nano_reads}" ]; then guppy_cpu ; fi
