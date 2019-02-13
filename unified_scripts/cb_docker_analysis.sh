@@ -13,7 +13,7 @@
     CPU=''
     #binning=''
     tax_read=''
-    #tax_assembly=''
+    sour_cluster=''
     nanoQC=''
     centrif_DB=''
     plas_centri=''
@@ -55,7 +55,7 @@ usage()
     echo -e "          [-Q]    nanopore QC, QC results for reads; Input: ${YEL}-s${NC}"
     echo -e "          [-P]    plasflow, plasmid binning; Input: ${YEL}-a${NC}"
     echo -e "              [-Pc]    Additional centrifuge contig classification of plasflow results"
-    #echo -e "              [-S]    Additional sourmash clustering to plasflow results"
+    echo -e "          [-S]    Sourmash contig clustering; Input: ${YEL}-a${NC}"
     exit;
   }
 
@@ -171,7 +171,8 @@ sourmash_cluster()
     -v $WORKDIRPATH/${output}:/output \
     -v $assembly_path:/input \
     replikation/sourmash \
-    /bin/sh -c "cd /input/ && sourmash compute -n 5000 -k 31,51 $assembly_name -o /output/signature.sig"
+    /bin/sh -c "cd /input/ && sourmash compute -n 5000 -k 31 $assembly_name -o /output/signature.sig --singleton" 
+    echo " ___ done"
   # compare signatures
   docker run --rm -it -v $WORKDIRPATH/${output}:/output replikation/sourmash \
     sourmash compare /output/signature.sig -o /output/results_sig
@@ -244,7 +245,7 @@ while getopts 'a:n:1:2:s:D:t:l:BLSQckPh' flag; do
       l) label="${OPTARG}" ;;
       #B) binning='true' ;;
       L) tax_read='true';;
-      #S) tax_assembly='true';;
+      S) sour_cluster='true';;
       c) plas_centri='true';;
       Q) nanoQC='true';;
       k) centrif_DB='true';;
@@ -294,11 +295,9 @@ done
     if [ ! -z "${assembly_file}" ]; then plasflow_execute ; else error=true ; fi
   fi
 # Sourmash assembly classification  - untested
-    #if [ ! -z "${tax_assembly}" ]; then
-    #    if [ ! -z "${assembly_file}" ]; then
-    #      if [ ! -z "${sour_DB}" ]; then sourmash_execute ; else error=true ; fi
-    #    else error=true ; fi
-    #fi
+    if [ ! -z "${sour_cluster}" ]; then
+        if [ ! -z "${assembly_file}" ]; then sourmash_cluster ; else error=true ; fi
+    fi
 # Binning - untested
     #  if [ ! -z "${binning}" ]; then
     #      if [ ! -z "${assembly_file}" ]; then
