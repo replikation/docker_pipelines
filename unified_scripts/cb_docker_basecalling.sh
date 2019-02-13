@@ -12,7 +12,7 @@
       # variables
       nano_reads=''
       CPU=$(lscpu -p | egrep -v '^#' | wc -l)
-      lable='results'
+      label='results'
       config='dna_r9.4.1_450bps_flipflop.cfg'
       kittype=''
       flowcell=''
@@ -42,11 +42,10 @@ usage()
     echo -e "          [-K]    Kit used e.g. ${GRE}-K SQK-LSK109${NC}"
     echo -e "          [-F]    Flowcell used ${GRE}-F FLO-MIN106${NC}"
     echo -e "${DIM}Advanced"
-    echo -e "          [-b]    gpu based batch run (overrides all options) Input: needs [-n]"
-    echo -e "          [-s]    collect batch results (overrides all options)${NC}"
+    echo -e "          [-b]    gpu based batch run with flipflop, Input: [-n]"
+    echo -e "          [-s]    sums up all ./fast*_batch/ from [-b] into fastq/ and fast5/${NC}"
     true>&2; exit 1;
   }
-
 
 guppy_cpu()
   {
@@ -86,12 +85,14 @@ guppy_gpu()
 
 guppy_batch_gpu()
   {
-   echo "Welcome to the batch basecaller for multi-fast5-files"
-   echo " a.) Moves one fast5 file to fast5_batch/ and basecalls it."
-   echo " b.) After each fast5 file you have 2 min to abort the script."
-   echo "     As long as you abort during the 2 min you can always continue another time."
-   echo " c.) Retype your command to continue (ignore the batch folders)"
-   echo " d.) After all fast5 basecalled use [-s] option to pool everything"
+   echo "Welcome to the batch basecaller for multi-fast5-files, use at your own risk"
+   echo ""
+   echo " 1.) Moves one .fast5 file to fast5_batch/ and basecalls it to fastq_batch/"
+   echo " 2.) After each .fast5 basecall you have 2 min to abort the script (terminal notifies you)"
+   echo "     Only abort during the 2 min (or move back the .fast5 file in the fast5_batch/)"
+   echo -e "     Resume basecalling with: ${YEL}$SCRIPTNAME -b -n fast5folder/$NC"
+   echo -e " 3.) Use ${YEL}$SCRIPTNAME [-s]$NC to pool the results in fast*_batch/"
+   echo " "
    echo -e "${YEL}Found the following .fast5 files:$NC"
    ls $nano_path
    echo " "
@@ -119,22 +120,23 @@ guppy_batch_gpu()
 
 collect()
 {
-  echo "Welcome to the COLLECTOR, use this after the batch option"
+  echo "Welcome to the batch COLLECTOR, use this after batch basecalling [-b] is done"
   echo "Your current Working has to contain fast5_batch/ and fastq_batch/"
   if [ -d fast5_batch/ ]; then echo -e "${GRE}fast5_batch found${NC}"; else echo -e "${RED}Can't find fast5_batch${NC}"; exit ; fi
   if [ -d fastq_batch/ ]; then echo -e "${GRE}fastq_batch found${NC}"; else echo -e "${RED}Can't find fastq_batch${NC}"; exit ; fi
   read -p "Proceed? [yes] or [no] " yn
   case $yn in
-      [Yy]* ) echo "Starting Batch..."
+      [Yy]* ) echo "Starting Collecting results..."
               mkdir -p fast5/
               mv fast5_batch/*/*.fast5 fast5/
+              find fast5_batch/ -type d -empty -delete
               mkdir -p fastq/
-              cat fastq_batch/*/*.fastq > fastq/all_reads.fastq
+              mv fastq_batch/*/*.fastq fastq/
+              mv fastq_batch/*/*.log fastq/
               head -1 fastq_batch/*/sequencing_summary.txt -q | head -1 > fastq/sequencing_summary.txt
               tail -n+2 fastq_batch/*/sequencing_summary.txt >> fastq/sequencing_summary.txt
-              mv fastq_batch/*/*.log fastq/
-              # remove !!!empty!!! fast5_batch folder
-              # remove fastq_batch
+              cat fastq/*.fastq > fastq/all_reads.fastq
+              find fastq_batch/ -type d -empty -delete
               ;;
       [Nn]* ) echo "Exiting..."; exit ;;
       * ) echo "  Please answer [y] or [n].";;

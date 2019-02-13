@@ -160,8 +160,28 @@ QC_nanopore()
 ################
 ##  UNTESTED  ##
 ################
+sourmash_cluster()
+  {
+  # untested
+  echo "Starting sourmash clustering"
+  output="sourmash_cluster_${label}"
+  mkdir -p $output
+  # remove .fasta from file for better picture?
+  docker run --rm -it \
+    -v $WORKDIRPATH/${output}:/output \
+    -v $assembly_path:/input \
+    replikation/sourmash \
+    /bin/sh -c "cd /input/ && sourmash compute -n 5000 -k 31,51 $assembly_name -o /output/signature.sig"
+  # compare signatures
+  docker run --rm -it -v $WORKDIRPATH/${output}:/output replikation/sourmash \
+    sourmash compare /output/signature.sig -o /output/results_sig
+  echo "Comparing done"
+  # plotting files to pdf
+  docker run --rm -it -v $WORKDIRPATH/${output}:/output replikation/sourmash \
+    /bin/sh -c "sourmash plot --pdf --labels /output/results_sig && mv *.pdf /output/"
+  }
 
-sourmash_execute()
+sourmash_annotate()
 {
   # untested
   echo "Starting sourmash"
