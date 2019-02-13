@@ -17,6 +17,7 @@
     nanoQC=''
     centrif_DB=''
     plas_centri=''
+    AB_res=''
     label='results'
   # CPU cores
     CPU=$(lscpu -p | egrep -v '^#' | wc -l) # can be changed to e.g. CPU="16"
@@ -39,7 +40,7 @@ usage()
     echo "e.g.:     $SCRIPTNAME -a assembly.fa -n reads.fastq -t 20 -l first_assembly -Lk"
     echo " "
     echo "Inputs:"
-    echo -e "          [-a]    ${YEL}Assembly file${NC}; .fa or .fasta"
+    echo -e "          [-a]    ${YEL}Assembly file / Multi fasta file${NC}; .fa or .fasta"
     echo -e "          [-n]    ${YEL}Nanopore read file${NC}; .fastq"
     echo -e "          [-1]    ${YEL}Illumina fastq forward reads${NC}; .fastq or .fastq.gz"
     echo -e "          [-2]    ${YEL}Illumina fastq reverse reads${NC}; .fastq or .fastq.gz"
@@ -55,7 +56,8 @@ usage()
     echo -e "          [-Q]    nanopore QC, QC results for reads; Input: ${YEL}-s${NC}"
     echo -e "          [-P]    plasflow, plasmid binning; Input: ${YEL}-a${NC}"
     echo -e "              [-Pc]    Additional centrifuge contig classification of plasflow results"
-    echo -e "          [-S]    Sourmash contig clustering; Input: ${YEL}-a${NC}"
+    echo -e "          [-S]    Sourmash, sequence clustering; Input: ${YEL}-a${NC}"
+    echo -e "          [-R]    ABRicate, resistance gene screening; Input: ${YEL}-a${NC}"
     exit;
   }
 
@@ -129,7 +131,7 @@ plasflow_execute()
       PlasFlow.py --input /output/${assembly_name} \
       --output /output/plasflow_predictions --threshold 0.7
     echo "Results saved to $output"
-if [ ! -z "${plas_centri}" ]; then
+  if [ ! -z "${plas_centri}" ]; then
     echo "Starting centrifuge for bacteria and archaea on plasflow results"
     for predicted_fasta in ${output}/plasflow_predictions_*.fasta; do
       filename=$(basename $predicted_fasta)
@@ -141,7 +143,7 @@ if [ ! -z "${plas_centri}" ]; then
         --report-file /output/centrifuge_classifcation_${filename%.fasta}.log
     done
     echo "Taxonomic classification saved to $output"
-fi
+  fi
 }
 
 QC_nanopore()
@@ -157,12 +159,8 @@ QC_nanopore()
   echo "Results saved to $output"
 }
 
-################
-##  UNTESTED  ##
-################
 sourmash_cluster()
-  {
-  # untested
+{
   echo "Starting sourmash clustering"
   output="sourmash_cluster_${label}"
   mkdir -p $output
@@ -171,16 +169,37 @@ sourmash_cluster()
     -v $WORKDIRPATH/${output}:/output \
     -v $assembly_path:/input \
     replikation/sourmash \
-    /bin/sh -c "cd /input/ && sourmash compute -n 5000 -k 31 $assembly_name -o /output/signature.sig --singleton" 
-    echo " ___ done"
-  # compare signatures
+    /bin/sh -c "cd /input/ && sourmash compute --scaled 1000 -k 31 $assembly_name -o /output/signature.sig --singleton"
   docker run --rm -it -v $WORKDIRPATH/${output}:/output replikation/sourmash \
     sourmash compare /output/signature.sig -o /output/results_sig
-  echo "Comparing done"
-  # plotting files to pdf
   docker run --rm -it -v $WORKDIRPATH/${output}:/output replikation/sourmash \
-    /bin/sh -c "sourmash plot --pdf --labels /output/results_sig && mv *.pdf /output/"
+    /bin/sh -c "sourmash plot --pdf --subsample=100 --labels /output/results_sig && mv *.pdf /output/"
+  echo -e "${RED}Hint: Won't plot more than 100 samples${NC}"
   }
+
+resistance_screen()
+{
+  echo "Starting ABRicate resistance gene screening"
+  output="ABRicate_resistances_${label}"
+  mkdir -p $output
+  DB_list=$(echo -e "resfinder\nncbi\ncard\nplasmidfinder\nargannot")
+  while read database; do
+  echo "  Screening against ${database}"
+  docker run --rm \
+    -v $assembly_path:/input \
+    replikation/abricate \
+    /input/$assembly_name --nopath --quiet --mincov 25 --db ${database} > $WORKDIRPATH/${output}/results_${database}.tab
+  done <<< "$DB_list"
+  docker run --rm -it \
+    -v $WORKDIRPATH/${output}:/input \
+    --entrypoint "/bin/sh" \
+    replikation/abricate \
+    -c "cd /input/ && abricate --summary results_*.tab" > $WORKDIRPATH/${output}/summary_all.tab
+}
+
+################
+##  UNTESTED  ##
+################
 
 sourmash_annotate()
 {
@@ -233,7 +252,7 @@ echo " "
 echo -e "${YEL}$SCRIPTNAME -h ${NC}for help/usage"
 echo " "
 # you could add a output flag
-while getopts 'a:n:1:2:s:D:t:l:BLSQckPh' flag; do
+while getopts 'a:n:1:2:s:D:t:l:BLSQckPRh' flag; do
     case "${flag}" in
       a) assembly_file="${OPTARG}" ;;
       1) fwd_reads="${OPTARG}" ;;
@@ -250,6 +269,7 @@ while getopts 'a:n:1:2:s:D:t:l:BLSQckPh' flag; do
       Q) nanoQC='true';;
       k) centrif_DB='true';;
       P) plasflow='true';;
+      R) AB_res='true';;
       h) usage;;
       *) usage
          exit 1 ;;
@@ -257,11 +277,11 @@ while getopts 'a:n:1:2:s:D:t:l:BLSQckPh' flag; do
 done
 
 # getting dir names
-  assembly_dir=$(dirname "$assembly_file") 2>/dev/null
-  nano_dir=$(dirname "$nano_reads") 2>/dev/null
+  assembly_dir=$(dirname "$assembly_file" 2>/dev/null)
+  nano_dir=$(dirname "$nano_reads" 2>/dev/null)
   fwd_dir=$(dirname "$fwd_reads" 2>/dev/null)
   rev_dir=$(dirname "$rev_reads" 2>/dev/null)
-  seqSum_dir=$(dirname "$seqSum") 2>/dev/null
+  seqSum_dir=$(dirname "$seqSum" 2>/dev/null)
   #sour_dir=$(dirname "$sour_DB") 2>/dev/null
 # getting absolute paths
   assembly_path=$(cd $assembly_dir 2>/dev/null && pwd)
@@ -282,23 +302,21 @@ done
 #############################
 # Taxonomic read classification
   if [ ! -z "${tax_read}" ]; then
-      if [ ! -z "${nano_reads}" ]; then centrifuge_execute ; else
-      if [ ! -z "${fwd_reads}" ]; then centrifuge_illumina ; else error=true ; fi fi
-  fi
+    if [ ! -z "${nano_reads}" ]; then centrifuge_execute ; else
+      if [ ! -z "${fwd_reads}" ]; then centrifuge_illumina ; else error=true ; fi fi fi
 # Nanopore QC
   if [ ! -z "${nanoQC}" ]; then
-    if [ ! -z "${seqSum}" ]; then QC_nanopore ; else error=true ; fi
-  fi
-
+    if [ ! -z "${seqSum}" ]; then QC_nanopore ; else error=true ; fi fi
 # Plasmid binning
   if [ ! -z "${plasflow}" ]; then
-    if [ ! -z "${assembly_file}" ]; then plasflow_execute ; else error=true ; fi
-  fi
-# Sourmash assembly classification  - untested
-    if [ ! -z "${sour_cluster}" ]; then
-        if [ ! -z "${assembly_file}" ]; then sourmash_cluster ; else error=true ; fi
-    fi
-# Binning - untested
+    if [ ! -z "${assembly_file}" ]; then plasflow_execute ; else error=true ; fi fi
+# Sourmash assembly classification
+  if [ ! -z "${sour_cluster}" ]; then
+    if [ ! -z "${assembly_file}" ]; then sourmash_cluster ; else error=true ; fi fi
+# Resistance gene screening
+  if [ ! -z "${AB_res}" ]; then
+    if [ ! -z "${assembly_file}" ]; then resistance_screen ; else error=true ; fi; fi
+# Binning
     #  if [ ! -z "${binning}" ]; then
     #      if [ ! -z "${assembly_file}" ]; then
     #        if [ ! -z "${nano_reads}" ]; then binning_execute ; else error=true ; fi
