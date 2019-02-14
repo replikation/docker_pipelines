@@ -4,7 +4,7 @@
   type docker >/dev/null 2>&1 || { echo -e >&2 "${RED}Docker not found.${NC} Please run: ${GRE}sudo apt install docker.io${NC}"; exit 1; }
   # use clonal pipeline by default
     meta=''
-    opera=''
+    HybMetaAs='metaspades'
     fwd_reads=''
     rev_reads=''
     nano_reads=''
@@ -27,19 +27,23 @@
 
 usage()
   {
+    echo "Wrapper script using docker to choose the best assembly approach for each input combination"
+    echo " "
     echo "Usage:    $SCRIPTNAME [-1 illumina_fwd.fastq ] [-2 illumina_rev.fastq] [-n nanopore.fastq] [OPTIONS]"
     echo "          Supports illumina paired only [-1] [-2], nanopore only [-n] and hybrid assembly [-1] [-2] [-n]"
     echo "Inputs:"
     echo -e "          [-1]    ${YEL}Illumina fastq forward reads${NC}; .fastq or .fastq.gz"
     echo -e "          [-2]    ${YEL}Illumina fastq reverse reads${NC}; .fastq or .fastq.gz"
     echo -e "          [-n]    ${YEL}Nanopore fastq file${NC}; .fastq"
+    echo " "
     echo "Options:"
     echo -e "          [-t]    Default: ${GRE}-t ${CPU}${NC} - amount of cores"
     echo -e "          [-L]    Default: ${GRE}-L ${gsize}${NC} - approx. genome length"
     echo -e "          [-l]    Label added to output dir e.g. ${GRE}-l Seq_run_2018${NC}"
-    echo "Metagenome options"
-    echo -e "          [-m]    Default: Single organism - Add ${GRE}-m${NC} for metagenomic DNA"
-    echo -e "          [-o]    Default: metaspades - add ${GRE}-o ${NC}to use opera-ms instead"
+    echo -e "          [-m]    Input reads are all metagenomic DNA"
+    echo "Change Assembler manually (Metagenomic hybrid assembler only):"
+    echo -e "          [-o]    Use opera-ms assembler instead"
+    echo -e "          [-s]    Special: wtdbg2 assembly first, nanopore contigs polishing via illumina reads after"
     exit;
   }
 
@@ -148,8 +152,8 @@ meta_illumina_only()
 
 meta_hybrid_assembly()
 {
-if [ -z "${opera}" ]; then
-  # METASPADES - tested
+case $HybMetaAs in
+metaspades)
   echo "Starting metaspades hybrid assembly"
   output="metaspades_hybrid_${label}"
   mkdir -p $output
@@ -161,8 +165,8 @@ if [ -z "${opera}" ]; then
     replikation/spades metaspades.py \
     -1 /input_fwd/${fwd_file} -2 /input_rev/${rev_file} --nanopore /input_nano/${nano_file} -o /output -t $CPU
     exit 0
-else
-  # OPERA-MS - tested
+;;
+opera)
   echo "Starting opera-ms hybrid assembly"
   output="opera-ms_hybrid_${label}"
   mkdir -p $output
@@ -193,7 +197,33 @@ else
     replikation/opera_ms /config/config.file
   rm -fr config/
   exit 0
-fi
+;;
+wtdbg2_polish)
+  echo "Starting wtdbg2 metagenome assembly"
+  output="Hybrid-wtdgb2-illumina_metagenome_${label}"
+  mkdir -p $output
+  docker run --rm -it --cpus="${CPU}"\
+    -v ${nano_path}:/input_nano \
+    -v ${WORKDIRPATH}/${output}:/output \
+    replikation/wtdbg2_polish \
+    wtdbg2 -p 23 -AS 2 -s 0.05 -e 3 -t $CPU -i /input_nano/${nano_file} -o /output/draft
+  #create contigs
+  docker run --rm -it --cpus="${CPU}"\
+    -v ${WORKDIRPATH}/${output}:/output \
+    replikation/wtdbg2_polish \
+    wtpoa-cns -t $CPU -i /output/draft.ctg.lay.gz -fo /output/draft.fa
+  echo "Starting unicycler polishing"
+  docker run --rm -it --cpus="${CPU}"\
+    -v ${fwd_path}:/input_fwd \
+    -v ${rev_path}:/input_rev \
+    -v ${nano_path}:/input_nano \
+    --entrypoint "/bin/sh" \
+    -v ${WORKDIRPATH}/${output}:/output \
+    replikation/unicycler \
+    -c "cd /output && unicycler_polish -1 /input_fwd/${fwd_file} -2 /input_rev/${rev_file} --long_reads /input_nano/${nano_file} \
+    -a /output/draft.fa -t $CPU"
+;;
+esac
 }
 
 #############################
@@ -204,7 +234,7 @@ echo "______________________________________________/ Created by Christian Brand
 echo " "
 
 # you could add a output flag
-while getopts '1:2:n:mt:L:ohl:' flag; do
+while getopts '1:2:n:mt:L:l:osh' flag; do
     case "${flag}" in
       1) fwd_reads="${OPTARG}" ;;
       2) rev_reads="${OPTARG}" ;;
@@ -213,7 +243,8 @@ while getopts '1:2:n:mt:L:ohl:' flag; do
       l) label="${OPTARG}" ;;
       t) CPU="${OPTARG}" ;;
       L) gsize="${OPTARG}" ;;
-      o) opera='true';;
+      o) HybMetaAs='opera';;
+      s) HybMetaAs='wtdbg2_polish';;
       h) usage;;
       *) usage
          exit 1 ;;
