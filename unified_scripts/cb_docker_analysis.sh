@@ -9,7 +9,6 @@
     nano_reads=''
     fwd_reads=''
     rev_reads=''
-    #sour_DB=''
     CPU=''
     #binning=''
     tax_read=''
@@ -45,7 +44,6 @@ usage()
     echo -e "          [-1]    ${YEL}Illumina fastq forward reads${NC}; .fastq or .fastq.gz"
     echo -e "          [-2]    ${YEL}Illumina fastq reverse reads${NC}; .fastq or .fastq.gz"
     echo -e "          [-s]    ${YEL}sequencing_summary.txt location${NC};name must be: sequencing_summary.txt"
-    #echo -e "          [-D]    ${YEL}Sourmash database location${NC}; .sbt.json"
     echo "Options:"
     echo -e "          [-t]    Default: ${GRE}-t ${CPU}${NC} - amount of cores"
     echo -e "          [-l]    Label added to output dir e.g. ${GRE}-l Seq_run_2018${NC}"
@@ -201,47 +199,29 @@ resistance_screen()
 ##  UNTESTED  ##
 ################
 
-sourmash_annotate()
-{
-  # untested
-  echo "Starting sourmash"
-  output="sourmash_${label}"
-  mkdir -p $output
-  # create signature
-    docker run --rm -it --cpus="${CPU}"\
-      -v $WORKDIRPATH/${output}:/output \
-      -v $assembly_path:/input \
-      replikation/sourmash \
-    /bin/sh -c "cd /input/ && sourmash compute -n 5000 -k 31 $assembly_name -o /output/contig_signatures.sig"
-    # compare
-    docker run --rm -it --cpus="${CPU}"\
-      -v $WORKDIRPATH/${output}:/output \
-      -v $sour_path:/DB_sour \
-      replikation/sourmash \
-      sourmash gather -k 31 /output/contig_signatures.sig /DB_sour/$DB_name \
-      > $WORKDIRPATH/${output}/${assembly_name%.*}_results.tsv
-    echo "Results saved to $output"
-}
-
 binning_execute()
 {
   # untested
-  echo "Starting nanopore only binning with metabat"
+  echo "Starting binning with metabat"
   output="metabat_${label}"
   docker run --rm -it --cpus="${CPU}"\
-    -v ${assembly_path}:/input \
-    -v ${nano_path}:/input_nano \
-    -v ${WORKDIRPATH}/${output}:/output \
-    replikation/wtdbg2_polish \
-    sh -c "minimap2 -t $CPU -x map-pb -a /input/${assembly_name} /input_nano/${nano_name} | samtools view -Sb - > ${assembly_name}.map.bam \
-    && samtools sort ${assembly_name}.map.bam > /output/${assembly_name}.map.srt.bam"
-  docker run --rm -it \
-    -v $assembly_path:/input --cpus="${CPU}"\
+    -v $fwd_path:/input_fwd \
+    -v $rev_path:/input_rev \
+    -v $assembly_path:/input \
+    -v $WORKDIRPATH/${output}:/output \
+    replikation/unicycler \
+    sh -c "bowtie2-build /input/${assembly_name} /output/assembly.contigs && \
+    bowtie2 -x /output/assembly.contigs -1 /input_fwd/$fwd_file -2 /input_rev/$rev_file | samtools view -bS -o binary.bam && \
+    samtools sort binary.bam -o /output/${assembly_name}.bam && \
+    samtools index /output/${assembly_name}.bam"
+  docker run --rm -it --cpus="${CPU}"\
+    -v $assembly_path:/input \
     -v $WORKDIRPATH/${output}:/output \
     metabat/metabat \
-    sh -c "cp /input/${assembly_name} /output/ && cd /output/ && runMetaBat.sh -m 1500 ${assembly_name} ${assembly_name}.map.srt.bam"
+    sh -c "cp /input/${assembly_name} /output/ && cd /output/ && runMetaBat.sh -m 1500 ${assembly_name} ${assembly_name}.bam"
     # && mv *.metabat-bins1500 /output/metabat
 }
+
 
 #############################
 ###   Start of script    ####
@@ -252,14 +232,13 @@ echo " "
 echo -e "${YEL}$SCRIPTNAME -h ${NC}for help/usage"
 echo " "
 # you could add a output flag
-while getopts 'a:n:1:2:s:D:t:l:BLSQckPRh' flag; do
+while getopts 'a:n:1:2:s:t:l:BLSQckPRh' flag; do
     case "${flag}" in
       a) assembly_file="${OPTARG}" ;;
       1) fwd_reads="${OPTARG}" ;;
       2) rev_reads="${OPTARG}" ;;
       n) nano_reads="${OPTARG}" ;;
       s) seqSum="${OPTARG}" ;;
-      #D) sour_DB="${OPTARG}" ;;
       t) CPU="${OPTARG}" ;;
       l) label="${OPTARG}" ;;
       #B) binning='true' ;;
@@ -282,20 +261,17 @@ done
   fwd_dir=$(dirname "$fwd_reads" 2>/dev/null)
   rev_dir=$(dirname "$rev_reads" 2>/dev/null)
   seqSum_dir=$(dirname "$seqSum" 2>/dev/null)
-  #sour_dir=$(dirname "$sour_DB") 2>/dev/null
 # getting absolute paths
   assembly_path=$(cd $assembly_dir 2>/dev/null && pwd)
   nano_path=$(cd "$nano_dir" 2>/dev/null && pwd)
   fwd_path=$(cd "$fwd_dir" 2>/dev/null && pwd)
   rev_path=$(cd "$rev_dir" 2>/dev/null && pwd)
   seqSum_path=$(cd "$seqSum_dir" 2>/dev/null && pwd)
-  #sour_path=$(cd "$sour_dir" 2>/dev/null && pwd)
 # getting filename
   assembly_name=${assembly_file##*/}
   nano_name=${nano_reads##*/}
   fwd_file=${fwd_reads##*/}
   rev_file=${rev_reads##*/}
-  #DB_name=${sour_DB##*/}
 
 #############################
 ## Choose Executable(s)    ##

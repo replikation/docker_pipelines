@@ -221,7 +221,7 @@ wtdbg2_polish)
     -v ${WORKDIRPATH}/${output}:/output \
     replikation/unicycler \
     -c "cd /output && unicycler_polish -1 /input_fwd/${fwd_file} -2 /input_rev/${rev_file} --long_reads /input_nano/${nano_file} \
-    -a /output/draft.fa -t $CPU"
+    -a /output/draft.fa --threads $CPU"
 ;;
 esac
 }
