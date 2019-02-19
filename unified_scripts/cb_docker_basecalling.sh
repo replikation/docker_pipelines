@@ -131,11 +131,10 @@ collect()
               mv fast5_batch/*/*.fast5 fast5/
               find fast5_batch/ -type d -empty -delete
               mkdir -p fastq/
-              mv fastq_batch/*/*.fastq fastq/
               mv fastq_batch/*/*.log fastq/
               head -1 fastq_batch/*/sequencing_summary.txt -q | head -1 > fastq/sequencing_summary.txt
-              tail -n+2 fastq_batch/*/sequencing_summary.txt >> fastq/sequencing_summary.txt
-              cat fastq/*.fastq > fastq/all_reads.fastq
+              tail -q -n+2 fastq_batch/*/sequencing_summary.txt >> fastq/sequencing_summary.txt
+              cat fastq_batch/*/*.fastq > fastq/all_reads.fastq
               find fastq_batch/ -type d -empty -delete
               ;;
       [Nn]* ) echo "Exiting..."; exit ;;

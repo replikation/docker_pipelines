@@ -216,12 +216,11 @@ wtdbg2_polish)
   docker run --rm -it --cpus="${CPU}"\
     -v ${fwd_path}:/input_fwd \
     -v ${rev_path}:/input_rev \
-    -v ${nano_path}:/input_nano \
-    --entrypoint "/bin/sh" \
+    -v $nano_path:/input_nano \
     -v ${WORKDIRPATH}/${output}:/output \
     replikation/unicycler \
-    -c "cd /output && unicycler_polish -1 /input_fwd/${fwd_file} -2 /input_rev/${rev_file} --long_reads /input_nano/${nano_file} \
-    -a /output/draft.fa --threads $CPU"
+    -1 /input_fwd/${fwd_file} -2 /input_rev/${rev_file} -l /input_nano/${nano_file} \
+    --existing_long_read_assembly /output/draft.fa  -o /output -t $CPU
 ;;
 esac
 }
