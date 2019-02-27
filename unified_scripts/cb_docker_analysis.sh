@@ -10,7 +10,7 @@
     fwd_reads=''
     rev_reads=''
     CPU=''
-    #binning=''
+    binning=''
     tax_read=''
     sour_cluster=''
     nanoQC=''
@@ -48,7 +48,7 @@ usage()
     echo -e "          [-t]    Default: ${GRE}-t ${CPU}${NC} - amount of cores"
     echo -e "          [-l]    Label added to output dir e.g. ${GRE}-l Seq_run_2018${NC}"
     echo "Analysis tools:"
-    #echo -e "          [-B]    metabat, metagenome binning of contig file; Input: ${YEL}-a -n${NC}"
+    echo -e "          [-B]    metabat, metagenome binning of contig file; Input: ${YEL}-1 -2 -a${NC}"
     echo -e "          [-L]    centrifuge, tax. classif. of reads (bacteria & archaea); Input: ${YEL}-n${NC} or ${YEL}-1 -2${NC}"
     echo -e "              [-Lk]     use bacteria, viruses, human and archaea database instead ${YEL}-n ${NC}only"
     echo -e "          [-Q]    nanopore QC, QC results for reads; Input: ${YEL}-s${NC}"
@@ -209,16 +209,17 @@ binning_execute()
     -v $rev_path:/input_rev \
     -v $assembly_path:/input \
     -v $WORKDIRPATH/${output}:/output \
+    --entrypoint "/bin/sh" \
     replikation/unicycler \
-    sh -c "bowtie2-build /input/${assembly_name} /output/assembly.contigs && \
-    bowtie2 -x /output/assembly.contigs -1 /input_fwd/$fwd_file -2 /input_rev/$rev_file | samtools view -bS -o binary.bam && \
-    samtools sort binary.bam -o /output/${assembly_name}.bam && \
-    samtools index /output/${assembly_name}.bam"
+    -c "bowtie2-build /input/${assembly_name} /output/assembly.contigs && \
+    bowtie2 -p ${CPU} -x /output/assembly.contigs -1 /input_fwd/$fwd_file -2 /input_rev/$rev_file | samtools view -bS -o binary.bam && \
+    samtools sort binary.bam -o /output/${assembly_name}.srt.bam && \
+    samtools index /output/${assembly_name}.srt.bam"
   docker run --rm -it --cpus="${CPU}"\
     -v $assembly_path:/input \
     -v $WORKDIRPATH/${output}:/output \
     metabat/metabat \
-    sh -c "cp /input/${assembly_name} /output/ && cd /output/ && runMetaBat.sh -m 1500 ${assembly_name} ${assembly_name}.bam"
+    sh -c "cp /input/${assembly_name} /output/ && cd /output/ && runMetaBat.sh -m 1500 ${assembly_name} ${assembly_name}.srt.bam"
     # && mv *.metabat-bins1500 /output/metabat
 }
 
@@ -241,7 +242,7 @@ while getopts 'a:n:1:2:s:t:l:BLSQckPRh' flag; do
       s) seqSum="${OPTARG}" ;;
       t) CPU="${OPTARG}" ;;
       l) label="${OPTARG}" ;;
-      #B) binning='true' ;;
+      B) binning='true' ;;
       L) tax_read='true';;
       S) sour_cluster='true';;
       c) plas_centri='true';;
@@ -291,12 +292,11 @@ done
     if [ ! -z "${assembly_file}" ]; then sourmash_cluster ; else error=true ; fi fi
 # Resistance gene screening
   if [ ! -z "${AB_res}" ]; then
-    if [ ! -z "${assembly_file}" ]; then resistance_screen ; else error=true ; fi; fi
+    if [ ! -z "${assembly_file}" ]; then resistance_screen ; else error=true ; fi fi
 # Binning
-    #  if [ ! -z "${binning}" ]; then
-    #      if [ ! -z "${assembly_file}" ]; then
-    #        if [ ! -z "${nano_reads}" ]; then binning_execute ; else error=true ; fi
-    #      else error=true ; fi
-    #  fi
+      if [ ! -z "${binning}" ]; then
+          if [ ! -z "${assembly_file}" ]; then
+            if [ ! -z "${fwd_reads}" ]; then binning_execute ; else error=true ; fi
+          else error=true ; fi fi
 # error filled
   if [ ! -z "${error}" ]; then usage ; fi

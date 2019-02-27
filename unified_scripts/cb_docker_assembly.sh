@@ -110,7 +110,7 @@ unicycler_illumina_only()
   echo "Starting unicycler assembly"
   output="unicycler_assembly"
   mkdir -p $output
-  docker run --rm -it \
+  docker run --rm -it --cpus="${CPU}"\
     -v $fwd_path:/input_fwd \
     -v $rev_path:/input_rev \
     -v ${WORKDIRPATH}/${output}:/output \
@@ -125,7 +125,7 @@ unicycler_hybrid()
   echo "Starting unicycler hybrid assembly"
   output="unicycler_hybrid_${label}"
   mkdir -p $output
-  docker run --rm -it \
+  docker run --rm -it --cpus="${CPU}"\
     -v ${fwd_path}:/input_fwd \
     -v ${rev_path}:/input_rev \
     -v $nano_path:/input_nano \
@@ -141,7 +141,7 @@ meta_illumina_only()
   echo "Starting metaspades assembly"
   output="metaspades_assembly"
   mkdir -p $output
-  docker run --rm -it \
+  docker run --rm -it --cpus="${CPU}"\
     -v ${fwd_path}:/input_fwd \
     -v ${rev_path}:/input_rev \
     -v ${WORKDIRPATH}/${output}:/output \
@@ -157,7 +157,7 @@ metaspades)
   echo "Starting metaspades hybrid assembly"
   output="metaspades_hybrid_${label}"
   mkdir -p $output
-  docker run --rm -it \
+  docker run --rm -it --cpus="${CPU}"\
     -v $fwd_path:/input_fwd \
     -v $rev_path:/input_rev \
     -v $nano_path:/input_nano \
@@ -188,7 +188,7 @@ opera)
   echo "LONG_READ_MAPPER blasr" >>  config/config.file
   #echo "CONTIGS_FILE sample_files/sample_contigs.fasta"
   # run assembly
-  docker run --rm -it \
+  docker run --rm -it --cpus="${CPU}"\
     -v $fwd_path:/input_fwd \
     -v $rev_path:/input_rev \
     -v $nano_path:/input_nano \
@@ -207,11 +207,21 @@ wtdbg2_polish)
     -v ${WORKDIRPATH}/${output}:/output \
     replikation/wtdbg2_polish \
     wtdbg2 -p 23 -AS 2 -s 0.05 -e 3 -t $CPU -i /input_nano/${nano_file} -o /output/draft
-  #create contigs
+  # create contigs
   docker run --rm -it --cpus="${CPU}"\
     -v ${WORKDIRPATH}/${output}:/output \
     replikation/wtdbg2_polish \
     wtpoa-cns -t $CPU -i /output/draft.ctg.lay.gz -fo /output/draft.fa
+  # Polishing long reads
+    echo "Starting wtdbg2 polishing"
+    docker run --rm -it --cpus="${CPU}"\
+      -v ${nano_path}:/input_nano \
+      -v ${WORKDIRPATH}/${output}:/output \
+      replikation/wtdbg2_polish \
+      sh -c "minimap2 -t $CPU -x map-pb -a /output/draft.fa /input_nano/${nano_file} | samtools view -Sb - > draft.ctg.map.bam \
+      && samtools sort draft.ctg.map.bam > /output/draft.ctg.map.srt.bam \
+      && samtools view /output/draft.ctg.map.srt.bam | wtpoa-cns -t $CPU -d /output/draft.fa -i - -fo /output/polished.draft.fa"
+  # Polishing unicycler
   echo "Starting unicycler polishing"
   docker run --rm -it --cpus="${CPU}"\
     -v ${fwd_path}:/input_fwd \
@@ -220,7 +230,7 @@ wtdbg2_polish)
     -v ${WORKDIRPATH}/${output}:/output \
     replikation/unicycler \
     -1 /input_fwd/${fwd_file} -2 /input_rev/${rev_file} -l /input_nano/${nano_file} \
-    --existing_long_read_assembly /output/draft.fa  -o /output -t $CPU
+    --existing_long_read_assembly /output/polished.draft.fa  -o /output -t $CPU
 ;;
 esac
 }
