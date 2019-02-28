@@ -48,7 +48,7 @@ usage()
     echo -e "          [-t]    Default: ${GRE}-t ${CPU}${NC} - amount of cores"
     echo -e "          [-l]    Label added to output dir e.g. ${GRE}-l Seq_run_2018${NC}"
     echo "Analysis tools:"
-    echo -e "          [-B]    metabat, metagenome binning of contig file; Input: ${YEL}-1 -2 -a${NC}"
+    echo -e "          [-B]    metabat-checkM, metagenome binning of contig file; Input: ${YEL}-1 -2 -a${NC}"
     echo -e "          [-L]    centrifuge, tax. classif. of reads (bacteria & archaea); Input: ${YEL}-n${NC} or ${YEL}-1 -2${NC}"
     echo -e "              [-Lk]     use bacteria, viruses, human and archaea database instead ${YEL}-n ${NC}only"
     echo -e "          [-Q]    nanopore QC, QC results for reads; Input: ${YEL}-s${NC}"
@@ -204,6 +204,8 @@ binning_execute()
   # untested
   echo "Starting binning with metabat"
   output="metabat_${label}"
+  mkdir -p $output
+  # read mapping
   docker run --rm -it --cpus="${CPU}"\
     -v $fwd_path:/input_fwd \
     -v $rev_path:/input_rev \
@@ -215,14 +217,23 @@ binning_execute()
     bowtie2 -p ${CPU} -x /output/assembly.contigs -1 /input_fwd/$fwd_file -2 /input_rev/$rev_file | samtools view -bS -o binary.bam && \
     samtools sort binary.bam -o /output/${assembly_name}.srt.bam && \
     samtools index /output/${assembly_name}.srt.bam"
+  # binning
   docker run --rm -it --cpus="${CPU}"\
     -v $assembly_path:/input \
     -v $WORKDIRPATH/${output}:/output \
     metabat/metabat \
-    sh -c "cp /input/${assembly_name} /output/ && cd /output/ && runMetaBat.sh -m 1500 ${assembly_name} ${assembly_name}.srt.bam"
-    # && mv *.metabat-bins1500 /output/metabat
+    sh -c "cp /input/${assembly_name} /output/ && cd /output/ && runMetaBat.sh -m 1500 ${assembly_name} ${assembly_name}.srt.bam \
+    && mv *metabat-bins1500 metabat_bins"
+  # bin integrety & plotting
+  docker run --rm -it --cpus="${CPU}"\
+     -v $WORKDIRPATH/${output}:/output \
+     replikation/checkm \
+     lineage_wf -x fa /output/metabat_bins -t ${CPU} /output/checkm/
+  docker run --rm -it --cpus="${CPU}"\
+     -v $WORKDIRPATH/${output}:/output \
+     replikation/checkm \
+     bin_qa_plot -x fa /output/checkm/ /output/metabat_bins /output/plots
 }
-
 
 #############################
 ###   Start of script    ####

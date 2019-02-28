@@ -231,6 +231,7 @@ wtdbg2_polish)
     replikation/unicycler \
     -1 /input_fwd/${fwd_file} -2 /input_rev/${rev_file} -l /input_nano/${nano_file} \
     --existing_long_read_assembly /output/polished.draft.fa  -o /output -t $CPU
+  exit 0
 ;;
 esac
 }
