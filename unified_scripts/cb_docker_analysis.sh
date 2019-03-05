@@ -3,7 +3,6 @@
 ## Docker ##
   type docker >/dev/null 2>&1 || { echo -e >&2 "${RED}Docker not found.${NC} Please run: ${GRE}sudo apt install docker.io${NC}"; exit 1; }
   # use clonal pipeline by default
-    error=''
     assembly_file=''
     plasflow=''
     nano_reads=''
@@ -195,10 +194,6 @@ resistance_screen()
     -c "cd /input/ && abricate --summary results_*.tab" > $WORKDIRPATH/${output}/summary_all.tab
 }
 
-################
-##  UNTESTED  ##
-################
-
 binning_execute()
 {
   # untested
@@ -234,6 +229,11 @@ binning_execute()
      replikation/checkm \
      bin_qa_plot -x fa /output/checkm/ /output/metabat_bins /output/plots
 }
+
+################
+##  UNTESTED  ##
+################
+
 
 #############################
 ###   Start of script    ####
@@ -289,25 +289,15 @@ done
 ## Choose Executable(s)    ##
 #############################
 # Taxonomic read classification
-  if [ ! -z "${tax_read}" ]; then
-    if [ ! -z "${nano_reads}" ]; then centrifuge_execute ; else
-      if [ ! -z "${fwd_reads}" ]; then centrifuge_illumina ; else error=true ; fi fi fi
+  if [ ! -z "${tax_read}" ] && [ ! -z "${nano_reads}" ]; then centrifuge_execute ; fi
+  if [ ! -z "${tax_read}" ] && [ ! -z "${fwd_reads}" ] && [ ! -z "${rev_reads}" ]; then centrifuge_illumina; fi
 # Nanopore QC
-  if [ ! -z "${nanoQC}" ]; then
-    if [ ! -z "${seqSum}" ]; then QC_nanopore ; else error=true ; fi fi
+  if [ ! -z "${nanoQC}" ] && [ ! -z "${seqSum}" ]; then QC_nanopore; fi
 # Plasmid binning
-  if [ ! -z "${plasflow}" ]; then
-    if [ ! -z "${assembly_file}" ]; then plasflow_execute ; else error=true ; fi fi
+  if [ ! -z "${plasflow}" ] && [ ! -z "${assembly_file}" ]; then plasflow_execute; fi
 # Sourmash assembly classification
-  if [ ! -z "${sour_cluster}" ]; then
-    if [ ! -z "${assembly_file}" ]; then sourmash_cluster ; else error=true ; fi fi
+  if [ ! -z "${sour_cluster}" ] && [ ! -z "${assembly_file}" ]; then sourmash_cluster; fi
 # Resistance gene screening
-  if [ ! -z "${AB_res}" ]; then
-    if [ ! -z "${assembly_file}" ]; then resistance_screen ; else error=true ; fi fi
+  if [ ! -z "${AB_res}" ] && [ ! -z "${assembly_file}" ]; then resistance_screen; fi
 # Binning
-      if [ ! -z "${binning}" ]; then
-          if [ ! -z "${assembly_file}" ]; then
-            if [ ! -z "${fwd_reads}" ]; then binning_execute ; else error=true ; fi
-          else error=true ; fi fi
-# error filled
-  if [ ! -z "${error}" ]; then usage ; fi
+  if [ ! -z "${binning}" ] && [ ! -z "${assembly_file}" ] && [ ! -z "${fwd_reads}" ] && [ ! -z "${rev_reads}" ]; then binning_execute ; fi

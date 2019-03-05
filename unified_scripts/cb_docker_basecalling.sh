@@ -5,7 +5,7 @@
     YEL='\033[0;33m'
     NC='\033[0m'
     GRE='\033[0;32m'
-    DIM='\e[2m'
+    DIM='\033[1;30m'
     ## OPTIONS ##
     WORKDIRPATH=$(pwd) # for docker mountpoint (-v)
     SCRIPTNAME=$(basename -- "$0")
@@ -19,17 +19,18 @@
       cpu_mode=''
       batch_mode=''
       sum_mode=''
+      barkit=''
 
 ###############
 ##  Modules  ##
 ###############
 usage()
   {
-    echo "Usage:    $SCRIPTNAME -n fast5folder/ [OPTIONS] [HARDWARE] [APPROACH]"
+    echo "Usage:    $SCRIPTNAME [INPUT] [OPTIONS] [HARDWARE] [APPROACH]"
     echo -e "          ${DIM}e.g. gpu flipflop:${NC}${GRE} $SCRIPTNAME -n fast5folder/ ${NC}"
     echo -e "          ${DIM}e.g. cpu no flipflop:${NC}${GRE} $SCRIPTNAME -n fast5folder/ -c -K SQK-LSK109 -F FLO-MIN106${NC}"
     echo -e "${YEL}1. Input:${NC}"
-    echo -e "          [-n]    Nanopore fast5 folder; ${GRE}-n fast5folder/${NC}"
+    echo -e "          [-n]    Nanopore fast5_dir; ${GRE}-n fast5folder/${NC}"
     echo ""
     echo -e "${YEL}2. Hardware:${NC} (default) GPU based with a local guppy installation"
     echo -e "          [-c]    Deactivate GPU and use a CPU guppy via docker"
@@ -40,15 +41,17 @@ usage()
     echo -e "          [-K]    Kit used e.g. ${GRE}-K SQK-LSK109${NC}"
     echo -e "          [-F]    Flowcell used ${GRE}-F FLO-MIN106${NC}"
     echo ""
-    #echo -e "${YEL}4. Demultiplexing:${NC} (optional)"
-    #echo -e "          [-D]    Barcode Kit used e.g. ${GRE}-D EXP-NBD104${NC}"
-    #echo ""
-    echo -e "${YEL}Options:${NC}"
+    echo -e "${YEL}4. Options:${NC}"
     echo -e "          [-l]    Label added to output dir e.g. ${GRE}-l Seq_run_2018${NC}"
     echo ""
-    echo -e "${DIM}Advanced"
+    echo "Other Approaches:"
+    echo -e "${DIM} GPU Batch Mode:"
     echo -e "          [-b]    gpu based batch run with flipflop, Input: [-n]"
-    echo -e "          [-s]    sums up all ./fast*_batch/ from [-b] into fastq/ and fast5/${NC}"
+    echo -e "          [-s]    sums up all ./fast*_batch/ from [-b] into fastq/ and fast5/"
+    echo ""
+    echo -e " Demultiplexing"
+    echo -e "  Usage:  $SCRIPTNAME -D EXP-NBD104 -K SQK-LSK109 -n fastq_results -t ${CPU}"
+    echo -e "            [-D] Barcode-Kit [-K] Library-Kit [-n] fastq_dir [-t] CPU cores${NC}"
     true>&2; exit 1;
   }
 
@@ -60,8 +63,11 @@ guppy_cpu()
     flow_option=''
     kit_option=''
     config_option=''
-    if [ ! -z "${flowcell}" ]; then flow_option="--flowcell ${flowcell}"; fi
-    if [ ! -z "${kittype}" ]; then kit_option="--kit ${kittype}"; else config_option="-c $config"; fi
+    if [ ! -z $flowcell ] && [ ! -z $kittype ]; then
+      flow_option="--flowcell ${flowcell}" &&  kit_option="--kit ${kittype}"
+    else
+      config_option="-c $config"
+    fi
     mkdir -p ${output}
     docker run --rm -it \
       -v $nano_path:/input \
@@ -69,7 +75,7 @@ guppy_cpu()
       replikation/guppy \
       guppy_basecaller -r -t ${CPU_half} --runners 2 -i /input/ -s /output \
       $flow_option $kit_option $config_option --enable_trimming on --trim_strategy dna -q 0
-      exit 1
+    exit 1
   }
 
 guppy_gpu()
@@ -80,11 +86,28 @@ guppy_gpu()
     flow_option=''
     kit_option=''
     config_option=''
-    if [ ! -z "${flowcell}" ]; then flow_option="--flowcell ${flowcell}"; else config_option="-c $config"; fi
-    if [ ! -z "${kittype}" ]; then kit_option="--kit ${kittype}"; else config_option="-c $config"; fi
+    if [ ! -z $flowcell ] && [ ! -z $kittype ]; then
+      flow_option="--flowcell ${flowcell}" &&  kit_option="--kit ${kittype}"
+    else
+      config_option="-c $config"
+    fi
     mkdir -p ${output}
     guppy_basecaller -r -i $nano_reads -s $output \
-    $flow_option $kit_option $config_option --device auto --enable_trimming on --trim_strategy dna -q 0
+      $flow_option $kit_option $config_option --device auto --enable_trimming on --trim_strategy dna -q 0
+    exit 1
+  }
+
+demultiplexing()
+  {
+    type docker >/dev/null 2>&1 || { echo -e >&2 "${RED}Docker not found. Aborting.${NC}"; exit 1; }
+    output="fastq_demultiplexed_$label"
+    mkdir -p $output
+    docker run --rm -it \
+      -v $nano_path:/input \
+      -v $WORKDIRPATH/${output}:/output \
+      --entrypoint guppy_barcoder \
+      replikation/guppy \
+       -i /input -s /output --barcode_kit $barkit --kit $kittype -t $CPU
     exit 1
   }
 
@@ -124,13 +147,13 @@ guppy_batch_gpu()
   }
 
 collect()
-{
-  echo "Welcome to the batch COLLECTOR, use this after batch basecalling [-b] is done"
-  echo "Your current Working has to contain fast5_batch/ and fastq_batch/"
-  if [ -d fast5_batch/ ]; then echo -e "${GRE}fast5_batch found${NC}"; else echo -e "${RED}Can't find fast5_batch${NC}"; exit ; fi
-  if [ -d fastq_batch/ ]; then echo -e "${GRE}fastq_batch found${NC}"; else echo -e "${RED}Can't find fastq_batch${NC}"; exit ; fi
-  read -p "Proceed? [yes] or [no] " yn
-  case $yn in
+  {
+   echo "Welcome to the batch COLLECTOR, use this after batch basecalling [-b] is done"
+   echo "Your current Working has to contain fast5_batch/ and fastq_batch/"
+   if [ -d fast5_batch/ ]; then echo -e "${GRE}fast5_batch found${NC}"; else echo -e "${RED}Can't find fast5_batch${NC}"; exit ; fi
+   if [ -d fastq_batch/ ]; then echo -e "${GRE}fastq_batch found${NC}"; else echo -e "${RED}Can't find fastq_batch${NC}"; exit ; fi
+   read -p "Proceed? [yes] or [no] " yn
+   case $yn in
       [Yy]* ) echo "Starting Collecting results..."
               mkdir -p fast5/
               mv fast5_batch/*/*.fast5 fast5/
@@ -145,8 +168,8 @@ collect()
       [Nn]* ) echo "Exiting..."; exit ;;
       * ) echo "  Please answer [y] or [n].";;
     esac
-    exit 1
-}
+   exit 1
+  }
 
 ############################
 ###   Start of script    ###
@@ -155,14 +178,14 @@ echo "                                               ___________________________
 echo "______________________________________________/ Created by Christian Brandt \___"
 echo " "
 
-while getopts "n:t:l:K:F:cbsh" arg; do
+while getopts "n:t:l:K:F:D:cbsh" arg; do
       case "${arg}" in
-
         n) nano_reads="${OPTARG}" ;;
         t) CPU="${OPTARG}" ;;
         l) label="${OPTARG}" ;;
         K) kittype="${OPTARG}" ;;
         F) flowcell="${OPTARG}";;
+        D) barkit="${OPTARG}";;
         c) cpu_mode='true';;
         b) batch_mode='true';;
         s) sum_mode='true';;
@@ -175,18 +198,11 @@ done
 # getting absolute paths
   nano_path=$(cd "$nano_reads" 2>/dev/null && pwd)
 
-if [ ! -z "${batch_mode}" ]; then
-  if [ ! -z "${nano_reads}" ]; then guppy_batch_gpu ; fi
-fi
-
+if [ ! -z "${barkit}" ] && [ ! -z "${nano_reads}" ] && [ ! -z "${kittype}" ]; then demultiplexing; fi
+if [ ! -z "${batch_mode}" ] && [ ! -z "${nano_reads}" ]; then guppy_batch_gpu ; fi
 if [ ! -z "${sum_mode}" ]; then collect ; fi
 
-if [ ! -z "${cpu_mode}" ]; then
-  if [ ! -z "${nano_reads}" ]; then guppy_cpu ; fi
-fi
-
-if [ -z "${cpu_mode}" ]; then
-  if [ ! -z "${nano_reads}" ]; then guppy_gpu ; fi
-fi
+if [ ! -z "${cpu_mode}" ] && [ ! -z "${nano_reads}" ]; then guppy_cpu ; fi
+if [ -z "${cpu_mode}" ] && [ ! -z "${nano_reads}" ]; then guppy_gpu ; fi
 
 usage
