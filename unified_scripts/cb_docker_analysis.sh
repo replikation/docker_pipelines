@@ -162,7 +162,7 @@ sourmash_cluster()
   output="sourmash_cluster_${label}"
   mkdir -p $output
   # remove .fasta from file for better picture?
-  docker run --rm -it \
+  docker run --rm -it --cpus="${CPU}"\
     -v $WORKDIRPATH/${output}:/output \
     -v $assembly_path:/input \
     replikation/sourmash \
@@ -182,7 +182,7 @@ resistance_screen()
   DB_list=$(echo -e "resfinder\nncbi\ncard\nplasmidfinder\nargannot")
   while read database; do
   echo "  Screening against ${database}"
-  docker run --rm \
+  docker run --rm --cpus="${CPU}" \
     -v $assembly_path:/input \
     replikation/abricate \
     /input/$assembly_name --nopath --quiet --mincov 25 --db ${database} > $WORKDIRPATH/${output}/results_${database}.tab

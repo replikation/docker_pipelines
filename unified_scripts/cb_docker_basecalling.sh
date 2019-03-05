@@ -59,7 +59,6 @@ guppy_cpu()
   {
     type docker >/dev/null 2>&1 || { echo -e >&2 "${RED}Docker not found. Aborting.${NC}"; exit 1; }
     output="fastq_$label"
-    CPU_half=$(echo $(($CPU / 2)))
     flow_option=''
     kit_option=''
     config_option=''
@@ -69,11 +68,11 @@ guppy_cpu()
       config_option="-c $config"
     fi
     mkdir -p ${output}
-    docker run --rm -it \
+    docker run --rm -it --cpus="${CPU}"\
       -v $nano_path:/input \
       -v $WORKDIRPATH/${output}:/output \
       replikation/guppy \
-      guppy_basecaller -r -t ${CPU_half} --runners 2 -i /input/ -s /output \
+      guppy_basecaller -r -i /input/ -s /output \
       $flow_option $kit_option $config_option --enable_trimming on --trim_strategy dna -q 0
     exit 1
   }
@@ -82,7 +81,6 @@ guppy_gpu()
   {
     type guppy_basecaller >/dev/null 2>&1 || { echo -e >&2 "${RED}guppy locally not found, Aborting.${NC}"; exit 1; }
     output="fastq_$label"
-    CPU_half=$(echo $(($CPU / 2)))
     flow_option=''
     kit_option=''
     config_option=''
@@ -102,12 +100,12 @@ demultiplexing()
     type docker >/dev/null 2>&1 || { echo -e >&2 "${RED}Docker not found. Aborting.${NC}"; exit 1; }
     output="fastq_demultiplexed_$label"
     mkdir -p $output
-    docker run --rm -it \
+    docker run --rm -it --cpus="${CPU}"\
       -v $nano_path:/input \
       -v $WORKDIRPATH/${output}:/output \
       --entrypoint guppy_barcoder \
       replikation/guppy \
-       -i /input -s /output --barcode_kit $barkit --kit $kittype -t $CPU
+       -i /input -s /output --barcode_kit $barkit --kit $kittype
     exit 1
   }
 
