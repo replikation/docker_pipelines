@@ -58,6 +58,7 @@ usage()
 guppy_cpu()
   {
     type docker >/dev/null 2>&1 || { echo -e >&2 "${RED}Docker not found. Aborting.${NC}"; exit 1; }
+    CPU_half=$(echo $(($CPU / 2)))
     output="fastq_$label"
     flow_option=''
     kit_option=''
@@ -73,6 +74,7 @@ guppy_cpu()
       -v $WORKDIRPATH/${output}:/output \
       replikation/guppy \
       guppy_basecaller -r -i /input/ -s /output \
+      --num_callers ${CPU_half} --cpu_threads_per_caller 2 \
       $flow_option $kit_option $config_option --enable_trimming on --trim_strategy dna -q 0
     exit 1
   }
