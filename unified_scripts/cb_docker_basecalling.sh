@@ -50,8 +50,8 @@ usage()
     echo -e "          [-s]    sums up all ./fast*_batch/ from [-b] into fastq/ and fast5/"
     echo ""
     echo -e " Demultiplexing"
-    echo -e "  Usage:  $SCRIPTNAME -D EXP-NBD104 -K SQK-LSK109 -n fastq_results -t ${CPU}"
-    echo -e "            [-D] Barcode-Kit [-K] Library-Kit [-n] fastq_dir [-t] CPU cores${NC}"
+    echo -e "  Usage:  $SCRIPTNAME -D EXP-NBD104 -n fastq_results -t ${CPU}"
+    echo -e "            [-D] Barcode-Kit [-n] fastq_dir [-t] CPU cores${NC} [-l] Label for output"
     true>&2; exit 1;
   }
 
@@ -107,7 +107,7 @@ demultiplexing()
       -v $WORKDIRPATH/${output}:/output \
       --entrypoint guppy_barcoder \
       replikation/guppy \
-       -i /input -s /output --barcode_kit $barkit --kit $kittype
+       -i /input -s /output --barcode_kit $barkit
     exit 1
   }
 
@@ -198,7 +198,7 @@ done
 # getting absolute paths
   nano_path=$(cd "$nano_reads" 2>/dev/null && pwd)
 
-if [ ! -z "${barkit}" ] && [ ! -z "${nano_reads}" ] && [ ! -z "${kittype}" ]; then demultiplexing; fi
+if [ ! -z "${barkit}" ] && [ ! -z "${nano_reads}" ]; then demultiplexing; fi
 if [ ! -z "${batch_mode}" ] && [ ! -z "${nano_reads}" ]; then guppy_batch_gpu ; fi
 if [ ! -z "${sum_mode}" ]; then collect ; fi
 

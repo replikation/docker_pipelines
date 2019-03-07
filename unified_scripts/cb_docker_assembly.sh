@@ -51,7 +51,7 @@ wtdbg2_clonal()
 {
   # WTDBG2 & polishing tested
   echo "Starting wtdbg2 assembly"
-  output="wtdgb2_metagenome_${label}"
+  output="wtdbg2_clonal_${label}"
   mkdir -p $output
     docker run --rm -it --cpus="${CPU}"\
       -v ${nano_path}:/input_nano \
@@ -79,7 +79,7 @@ wtdbg2_meta()
 {
   # WTDBG2 & polishing tested
   echo "Starting wtdbg2 metagenome assembly"
-  output="wtdgb2_metagenome_${label}"
+  output="wtdbg2_metagenome_${label}"
   mkdir -p $output
     docker run --rm -it --cpus="${CPU}"\
       -v ${nano_path}:/input_nano \
