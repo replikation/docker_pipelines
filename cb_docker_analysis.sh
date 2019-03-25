@@ -180,7 +180,7 @@ resistance_read_screen()
   while read database; do
   echo "  Screening against ${database}"
   docker run --rm --cpus="${CPU}" \
-    -v $output:/input \
+    -v ${WORKDIRPATH}/${output}:/input \
     replikation/abricate \
     /input/filtered_reads.fasta --nopath --quiet --mincov 25 --db ${database} > $WORKDIRPATH/${output}/results_${database}.tab
   done <<< "$DB_list"
