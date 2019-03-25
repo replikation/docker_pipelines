@@ -14,7 +14,6 @@
     sour_cluster=''
     nanoQC=''
     centrif_DB=''
-    plas_centri=''
     AB_res=''
     label='results'
   # CPU cores
@@ -35,7 +34,7 @@
 usage()
   {
     echo "Usage:    $SCRIPTNAME [INPUT(S)]  [OPTION(S)] [ANALYSIS TOOL(S)]"
-    echo "e.g.:     $SCRIPTNAME -a assembly.fa -n reads.fastq -t 20 -l first_assembly -Lk"
+    echo "e.g.:     $SCRIPTNAME -n reads.fastq -t 20 -l first_assembly -Lk"
     echo " "
     echo "Inputs:"
     echo -e "          [-a]    ${YEL}Assembly file / Multi fasta file${NC}; .fa or .fasta"
@@ -48,49 +47,40 @@ usage()
     echo -e "          [-l]    Label added to output dir e.g. ${GRE}-l Seq_run_2018${NC}"
     echo "Analysis tools:"
     echo -e "          [-B]    metabat-checkM, metagenome binning of contig file; Input: ${YEL}-1 -2 -a${NC}"
-    echo -e "          [-L]    centrifuge, tax. classif. of reads (bacteria & archaea); Input: ${YEL}-n${NC} or ${YEL}-1 -2${NC}"
-    echo -e "              [-Lk]     use bacteria, viruses, human and archaea database instead ${YEL}-n ${NC}only"
+    echo -e "          [-C]    centrifuge, tax. classif. of reads (bacteria & archaea); Input: ${YEL}-n${NC} or ${YEL}-1 -2${NC}"
+    echo -e "              [-Ck]     use bacteria, viruses, human and archaea database instead ${YEL}-n ${NC}only"
     echo -e "          [-Q]    nanopore QC, QC results for reads; Input: ${YEL}-s${NC}"
     echo -e "          [-P]    plasflow, plasmid binning; Input: ${YEL}-a${NC}"
-    echo -e "              [-Pc]    Additional centrifuge contig classification of plasflow results"
     echo -e "          [-S]    Sourmash, sequence clustering; Input: ${YEL}-a${NC}"
-    echo -e "          [-R]    ABRicate, resistance gene screening; Input: ${YEL}-a${NC}"
+    echo -e "          [-R]    ABRicate, resistance gene screening; Input: ${YEL}-a${NC} or ${YEL}-n${NC}"
     exit;
   }
 
-centrifuge_execute()
+centrifuge_nanopore()
 {
-  if [ -z "${centrif_DB}" ]; then
-  echo "Starting centrifuge for bacteria and archaea"
-  output="centrifuge_nanopore_bac.arch_${label}"
+  # Standard parameters
+  dockerimage_centri='centrifuge'
+  DB_default='/centrifuge/database/p_compressed'
+  tag_centri='bac.arch'
+  # changing parameters depending on flag
+    # human and viral database
+    if [ ! -z "${centrif_DB}" ]
+    then dockerimage_centri=centrifuge_all; DB_default=/centrifuge/database/p_compressed+h+v; tag_centri=bac.arch.vir.hum; fi
+  # running centrifuge
+  echo "Starting centrifuge for ${tag_centri}"
+  output="centrifuge_nanopore_${tag_centri}_${label}"
   mkdir -p $output
   docker run --rm -i --cpus="${CPU}"\
     -v $nano_path:/input \
     -v $WORKDIRPATH/${output}:/output \
-    replikation/centrifuge \
-    centrifuge -p $CPU -x /centrifuge/database/p_compressed -k 5 --min-hitlen 16 \
+    replikation/$dockerimage_centri \
+    centrifuge -p $CPU -x $DB_default -k 5 --min-hitlen 16 \
     -U /input/$nano_name -S /output/centrifuge_out.txt --report-file /output/centrifuge_out.log
     # create report for pavian
-    docker run --rm -i -v $WORKDIRPATH/${output}:/output replikation/centrifuge \
-    centrifuge-kreport -x /centrifuge/database/p_compressed --min-score 300 --min-length 500 /output/centrifuge_out.txt \
+    docker run --rm -i -v $WORKDIRPATH/${output}:/output replikation/$dockerimage_centri \
+    centrifuge-kreport -x $DB_default --min-score 300 --min-length 500 /output/centrifuge_out.txt \
     > $WORKDIRPATH/${output}/${nano_name%.*}_pavian_report.csv
   echo "Results saved to $output"
-else
-  echo "Starting centrifuge for bacteria, viruses, human and archaea"
-  output="centrifuge_nanopore_bac.arch.vir.hum_${label}"
-  mkdir -p $output
-  docker run --rm -i --cpus="${CPU}"\
-    -v $nano_path:/input \
-    -v $WORKDIRPATH/${output}:/output \
-    replikation/centrifuge_all \
-    centrifuge -p $CPU -x /centrifuge/database/p_compressed+h+v -k 1 --min-hitlen 16 \
-    -U /input/$nano_name -S /output/centrifuge_out.txt --report-file /output/centrifuge_out.log
-    # create report for pavian
-  docker run --rm -i -v --cpus="${CPU}" $WORKDIRPATH/${output}:/output replikation/centrifuge_all \
-    centrifuge-kreport -x /centrifuge/database/p_compressed+h+v --min-score 300 --min-length 500 /output/centrifuge_out.txt \
-    > $WORKDIRPATH/${output}/${nano_name%.*}_pavian_report.csv
-  echo "Results saved to $output"
-fi
 }
 
 centrifuge_illumina()
@@ -114,33 +104,20 @@ centrifuge_illumina()
 
 plasflow_execute()
 {
-    echo "Starting plasflow, removing contigs below 2000 bp"
-    output="plasflow_${label}"
-    docker run --rm -it --cpus="${CPU}"\
-      -v $WORKDIRPATH/${output}:/output \
-      -v $assembly_path:/input \
-      replikation/plasflow \
-      filter_sequences_by_length.pl -input /input/${assembly_name} \
-      -output /output/${assembly_name} -thresh 2000
-    docker run --rm -it --cpus="${CPU}"\
-      -v $WORKDIRPATH/${output}:/output \
-      replikation/plasflow \
-      PlasFlow.py --input /output/${assembly_name} \
-      --output /output/plasflow_predictions --threshold 0.7
-    echo "Results saved to $output"
-  if [ ! -z "${plas_centri}" ]; then
-    echo "Starting centrifuge for bacteria and archaea on plasflow results"
-    for predicted_fasta in ${output}/plasflow_predictions_*.fasta; do
-      filename=$(basename $predicted_fasta)
-      docker run --rm -i --cpus="${CPU}"\
-        -v $WORKDIRPATH/${output}:/output \
-        replikation/centrifuge \
-        centrifuge -p $CPU -x /centrifuge/database/p_compressed -k 1 --min-hitlen 16 \
-        -f -U /output/${filename} -S /output/centrifuge_classifcation_${filename%.fasta}.txt \
-        --report-file /output/centrifuge_classifcation_${filename%.fasta}.log
-    done
-    echo "Taxonomic classification saved to $output"
-  fi
+  echo "Starting plasflow, removing contigs below 2000 bp"
+  output="plasflow_${label}"
+  docker run --rm -it --cpus="${CPU}"\
+    -v $WORKDIRPATH/${output}:/output \
+    -v $assembly_path:/input \
+    replikation/plasflow \
+    filter_sequences_by_length.pl -input /input/${assembly_name} \
+    -output /output/${assembly_name} -thresh 2000
+  docker run --rm -it --cpus="${CPU}"\
+    -v $WORKDIRPATH/${output}:/output \
+    replikation/plasflow \
+    PlasFlow.py --input /output/${assembly_name} \
+    --output /output/plasflow_predictions --threshold 0.7
+  echo "Results saved to $output"
 }
 
 QC_nanopore()
@@ -187,11 +164,26 @@ resistance_screen()
     replikation/abricate \
     /input/$assembly_name --nopath --quiet --mincov 25 --db ${database} > $WORKDIRPATH/${output}/results_${database}.tab
   done <<< "$DB_list"
-  docker run --rm -it \
-    -v $WORKDIRPATH/${output}:/input \
-    --entrypoint "/bin/sh" \
+}
+
+resistance_read_screen()
+{
+  echo "Starting ABRicate resistance gene screening against reads greater 1000 bp"
+  output="ABRicate_resistances_vs_reads_${label}"
+  mkdir -p $output
+  echo "Preparing reads first (takes time)..."
+  sed -n '1~4s/^@/>/p;2~4p' $nano_reads | \
+  sed ':a;N;/^>/M!s/\n//;ta;P;D' | \
+  awk '/^>/ { getline seq } length(seq) >1000 { print $0 "\n" seq }' > $output/filtered_reads.fasta
+  echo "Preparing done."
+  DB_list=$(echo -e "resfinder\nncbi\ncard\nplasmidfinder\nargannot")
+  while read database; do
+  echo "  Screening against ${database}"
+  docker run --rm --cpus="${CPU}" \
+    -v $output:/input \
     replikation/abricate \
-    -c "cd /input/ && abricate --summary results_*.tab" > $WORKDIRPATH/${output}/summary_all.tab
+    /input/filtered_reads.fasta --nopath --quiet --mincov 25 --db ${database} > $WORKDIRPATH/${output}/results_${database}.tab
+  done <<< "$DB_list"
 }
 
 binning_execute()
@@ -230,11 +222,6 @@ binning_execute()
      bin_qa_plot -x fa /output/checkm/ /output/metabat_bins /output/plots
 }
 
-################
-##  UNTESTED  ##
-################
-
-
 #############################
 ###   Start of script    ####
 #############################
@@ -244,25 +231,24 @@ echo " "
 echo -e "${YEL}$SCRIPTNAME -h ${NC}for help/usage"
 echo " "
 # you could add a output flag
-while getopts 'a:n:1:2:s:t:l:BLSQckPRh' flag; do
+while getopts 'a:1:2:n:s:t:l:BCkSQPRh' flag; do
     case "${flag}" in
       a) assembly_file="${OPTARG}" ;;
       1) fwd_reads="${OPTARG}" ;;
       2) rev_reads="${OPTARG}" ;;
       n) nano_reads="${OPTARG}" ;;
       s) seqSum="${OPTARG}" ;;
-      t) CPU="${OPTARG}" ;;
-      l) label="${OPTARG}" ;;
+        t) CPU="${OPTARG}" ;;
+        l) label="${OPTARG}" ;;
       B) binning='true' ;;
-      L) tax_read='true';;
+      C) tax_read='true';;
+        k) centrif_DB='true';;
       S) sour_cluster='true';;
-      c) plas_centri='true';;
       Q) nanoQC='true';;
-      k) centrif_DB='true';;
       P) plasflow='true';;
       R) AB_res='true';;
-      h) usage;;
-      *) usage
+        h) usage;;
+        *) usage
          exit 1 ;;
     esac
 done
@@ -289,7 +275,7 @@ done
 ## Choose Executable(s)    ##
 #############################
 # Taxonomic read classification
-  if [ ! -z "${tax_read}" ] && [ ! -z "${nano_reads}" ]; then centrifuge_execute ; fi
+  if [ ! -z "${tax_read}" ] && [ ! -z "${nano_reads}" ]; then centrifuge_nanopore ; fi
   if [ ! -z "${tax_read}" ] && [ ! -z "${fwd_reads}" ] && [ ! -z "${rev_reads}" ]; then centrifuge_illumina; fi
 # Nanopore QC
   if [ ! -z "${nanoQC}" ] && [ ! -z "${seqSum}" ]; then QC_nanopore; fi
@@ -299,5 +285,6 @@ done
   if [ ! -z "${sour_cluster}" ] && [ ! -z "${assembly_file}" ]; then sourmash_cluster; fi
 # Resistance gene screening
   if [ ! -z "${AB_res}" ] && [ ! -z "${assembly_file}" ]; then resistance_screen; fi
+  if [ ! -z "${AB_res}" ] && [ ! -z "${nano_reads}" ]; then resistance_read_screen; fi
 # Binning
   if [ ! -z "${binning}" ] && [ ! -z "${assembly_file}" ] && [ ! -z "${fwd_reads}" ] && [ ! -z "${rev_reads}" ]; then binning_execute ; fi
