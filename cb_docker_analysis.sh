@@ -8,6 +8,7 @@
     nano_reads=''
     fwd_reads=''
     rev_reads=''
+    input_folder=''
     CPU=''
     binning=''
     tax_read=''
@@ -15,6 +16,7 @@
     nanoQC=''
     centrif_DB=''
     AB_res=''
+    recentrifuge=''
     label='results'
   # CPU cores
     CPU=$(lscpu -p | egrep -v '^#' | wc -l) # can be changed to e.g. CPU="16"
@@ -42,15 +44,17 @@ usage()
     echo -e "          [-1]    ${YEL}Illumina fastq forward reads${NC}; .fastq or .fastq.gz"
     echo -e "          [-2]    ${YEL}Illumina fastq reverse reads${NC}; .fastq or .fastq.gz"
     echo -e "          [-s]    ${YEL}sequencing_summary.txt location${NC};name must be: sequencing_summary.txt"
+    echo -e "          [-f]    ${YEL}folder with input files${NC}; e.g. centrifuge_results/"
     echo "Options:"
     echo -e "          [-t]    Default: ${GRE}-t ${CPU}${NC} - amount of cores"
     echo -e "          [-l]    Label added to output dir e.g. ${GRE}-l Seq_run_2018${NC}"
     echo "Analysis tools:"
-    echo -e "          [-B]    metabat-checkM, metagenome binning of contig file; Input: ${YEL}-1 -2 -a${NC}"
-    echo -e "          [-C]    centrifuge, tax. classif. of reads (bacteria & archaea); Input: ${YEL}-n${NC} or ${YEL}-1 -2${NC}"
-    echo -e "              [-Ck]     use bacteria, viruses, human and archaea database instead ${YEL}-n ${NC}only"
+    echo -e "          [-B]    Binning via metabat-checkM of contigs; Input: ${YEL}-1 -2 -a${NC}"
+    echo -e "          [-C]    Centrifuge, tax. classif. of reads (bacteria & archaea); Input: ${YEL}-n${NC} or ${YEL}-1 -2${NC}"
+    echo -e "              [-Ck]   use bacteria, viruses, human and archaea database instead, ${YEL}-n ${NC}only"
+    echo -e "              [-K]    Krona-recentrifuge; Input: ${YEL}-f${NC}, contains atleast 1 *.out file(s) from [-C]"
     echo -e "          [-Q]    nanopore QC, QC results for reads; Input: ${YEL}-s${NC}"
-    echo -e "          [-P]    plasflow, plasmid binning; Input: ${YEL}-a${NC}"
+    echo -e "          [-P]    Plasflow, plasmid binning; Input: ${YEL}-a${NC}"
     echo -e "          [-S]    Sourmash, sequence clustering; Input: ${YEL}-a${NC}"
     echo -e "          [-R]    ABRicate, resistance gene screening; Input: ${YEL}-a${NC} or ${YEL}-n${NC}"
     exit;
@@ -75,12 +79,28 @@ centrifuge_nanopore()
     -v $WORKDIRPATH/${output}:/output \
     replikation/$dockerimage_centri \
     centrifuge -p $CPU -x $DB_default -k 5 --min-hitlen 16 \
-    -U /input/$nano_name -S /output/centrifuge_out.txt --report-file /output/centrifuge_out.log
+    -U /input/$nano_name -S /output/centrifuge_results.out --report-file /output/centrifuge_out.log
     # create report for pavian
     docker run --rm -i -v $WORKDIRPATH/${output}:/output replikation/$dockerimage_centri \
-    centrifuge-kreport -x $DB_default --min-score 300 --min-length 500 /output/centrifuge_out.txt \
+    centrifuge-kreport -x $DB_default --min-score 300 --min-length 500 /output/centrifuge_results.out \
     > $WORKDIRPATH/${output}/${nano_name%.*}_pavian_report.csv
   echo "Results saved to $output"
+}
+
+recentrifuge()
+{
+  echo -e "Searching for *.out files in ${YEL}${infolder_path}${NC} ..."
+    test_files=$(ls -1 ${infolder_path}/*.out 2> /dev/null)
+    if [ -z "${test_files}" ]; then echo -e "  Can't find .out files in ${YEL}${infolder_path}${NC}, exiting"; exit; fi
+    filenames=$(ls -1 ${infolder_path}/*.out | xargs -n 1 basename)
+    input_for_docker="${filenames//$'\n'/ -f /input/}"
+    input_for_docker='-f /input/'${input_for_docker}
+    Num_of_samples=$(echo "$filenames" | wc -l)
+  echo -e "Found ${YEL}${Num_of_samples}${NC} file(s)"
+  docker run --rm -it \
+    -v ${infolder_path}:/input \
+    replikation/recentrifuge \
+    -n /database/ncbi_node -s LENGTH $input_for_docker -o /input/${Num_of_samples}_samples_overview.html
 }
 
 centrifuge_illumina()
@@ -94,10 +114,10 @@ centrifuge_illumina()
     -v $WORKDIRPATH/${output}:/output \
     replikation/centrifuge \
     centrifuge -p $CPU -x /centrifuge/database/p_compressed -k 5 --min-hitlen 16 \
-    -1 /input_fwd/${fwd_file} -2 /input_rev/${rev_file} -S /output/centrifuge_out.txt --report-file /output/centrifuge_out.log
+    -1 /input_fwd/${fwd_file} -2 /input_rev/${rev_file} -S /output/centrifuge_results.out --report-file /output/centrifuge_out.log
     # create report for pavian
     docker run --rm -i -v $WORKDIRPATH/${output}:/output replikation/centrifuge \
-    centrifuge-kreport -x /centrifuge/database/p_compressed --min-score 300 --min-length 500 /output/centrifuge_out.txt \
+    centrifuge-kreport -x /centrifuge/database/p_compressed --min-score 300 --min-length 500 /output/centrifuge_results.out \
     > $WORKDIRPATH/${output}/${fwd_file%.*}_pavian_report.csv
   echo "Results saved to $output"
 }
@@ -231,18 +251,20 @@ echo " "
 echo -e "${YEL}$SCRIPTNAME -h ${NC}for help/usage"
 echo " "
 # you could add a output flag
-while getopts 'a:1:2:n:s:t:l:BCkSQPRh' flag; do
+while getopts 'a:1:2:n:s:f:t:l:BCkKSQPRh' flag; do
     case "${flag}" in
       a) assembly_file="${OPTARG}" ;;
       1) fwd_reads="${OPTARG}" ;;
       2) rev_reads="${OPTARG}" ;;
       n) nano_reads="${OPTARG}" ;;
       s) seqSum="${OPTARG}" ;;
+      f) input_folder="${OPTARG}" ;;
         t) CPU="${OPTARG}" ;;
         l) label="${OPTARG}" ;;
       B) binning='true' ;;
       C) tax_read='true';;
         k) centrif_DB='true';;
+      K) recentrifuge='true';;
       S) sour_cluster='true';;
       Q) nanoQC='true';;
       P) plasflow='true';;
@@ -253,19 +275,20 @@ while getopts 'a:1:2:n:s:t:l:BCkSQPRh' flag; do
     esac
 done
 
-# getting dir names
-  assembly_dir=$(dirname "$assembly_file" 2>/dev/null)
-  nano_dir=$(dirname "$nano_reads" 2>/dev/null)
-  fwd_dir=$(dirname "$fwd_reads" 2>/dev/null)
-  rev_dir=$(dirname "$rev_reads" 2>/dev/null)
-  seqSum_dir=$(dirname "$seqSum" 2>/dev/null)
+# getting dir names from file inputs
+  if [ ! -z "${assembly_file}" ]; then assembly_dir=$(dirname "$assembly_file"); fi
+  if [ ! -z "${nano_reads}" ]; then nano_dir=$(dirname "$nano_reads"); fi
+  if [ ! -z "${fwd_reads}" ]; then fwd_dir=$(dirname "$fwd_reads"); fi
+  if [ ! -z "${rev_reads}" ]; then rev_dir=$(dirname "$rev_reads"); fi
+  if [ ! -z "${seqSum}" ]; then seqSum_dir=$(dirname "$seqSum"); fi
 # getting absolute paths
-  assembly_path=$(cd $assembly_dir 2>/dev/null && pwd)
-  nano_path=$(cd "$nano_dir" 2>/dev/null && pwd)
-  fwd_path=$(cd "$fwd_dir" 2>/dev/null && pwd)
-  rev_path=$(cd "$rev_dir" 2>/dev/null && pwd)
-  seqSum_path=$(cd "$seqSum_dir" 2>/dev/null && pwd)
-# getting filename
+  if [ ! -z "${assembly_file}" ]; then assembly_path=$(cd "$assembly_dir" && pwd); fi
+  if [ ! -z "${nano_reads}" ]; then nano_path=$(cd "$nano_dir" && pwd); fi
+  if [ ! -z "${fwd_reads}" ]; then fwd_path=$(cd "$fwd_dir" && pwd); fi
+  if [ ! -z "${rev_reads}" ]; then rev_path=$(cd "$rev_dir" && pwd); fi
+  if [ ! -z "${seqSum}" ]; then  seqSum_path=$(cd "$seqSum_dir" && pwd); fi
+  if [ ! -z "${input_folder}" ]; then infolder_path=$(cd "$input_folder" && pwd); fi
+# getting filename w/o path
   assembly_name=${assembly_file##*/}
   nano_name=${nano_reads##*/}
   fwd_file=${fwd_reads##*/}
@@ -277,6 +300,8 @@ done
 # Taxonomic read classification
   if [ ! -z "${tax_read}" ] && [ ! -z "${nano_reads}" ]; then centrifuge_nanopore ; fi
   if [ ! -z "${tax_read}" ] && [ ! -z "${fwd_reads}" ] && [ ! -z "${rev_reads}" ]; then centrifuge_illumina; fi
+  # Krona summary
+  if [ ! -z "${recentrifuge}" ] && [ ! -z "${input_folder}" ]; then recentrifuge ; fi
 # Nanopore QC
   if [ ! -z "${nanoQC}" ] && [ ! -z "${seqSum}" ]; then QC_nanopore; fi
 # Plasmid binning
