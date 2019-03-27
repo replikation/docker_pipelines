@@ -87,22 +87,6 @@ centrifuge_nanopore()
   echo "Results saved to $output"
 }
 
-recentrifuge()
-{
-  echo -e "Searching for *.out files in ${YEL}${infolder_path}${NC} ..."
-    test_files=$(ls -1 ${infolder_path}/*.out 2> /dev/null)
-    if [ -z "${test_files}" ]; then echo -e "  Can't find .out files in ${YEL}${infolder_path}${NC}, exiting"; exit; fi
-    filenames=$(ls -1 ${infolder_path}/*.out | xargs -n 1 basename)
-    input_for_docker="${filenames//$'\n'/ -f /input/}"
-    input_for_docker='-f /input/'${input_for_docker}
-    Num_of_samples=$(echo "$filenames" | wc -l)
-  echo -e "Found ${YEL}${Num_of_samples}${NC} file(s)"
-  docker run --rm -it \
-    -v ${infolder_path}:/input \
-    replikation/recentrifuge \
-    -n /database/ncbi_node -s LENGTH $input_for_docker -o /input/${Num_of_samples}_samples_overview.html
-}
-
 centrifuge_illumina()
 {
   echo "Starting centrifuge for bacteria and archaea (illumina)"
@@ -120,6 +104,22 @@ centrifuge_illumina()
     centrifuge-kreport -x /centrifuge/database/p_compressed --min-score 300 --min-length 500 /output/centrifuge_results.out \
     > $WORKDIRPATH/${output}/${fwd_file%.*}_pavian_report.csv
   echo "Results saved to $output"
+}
+
+recentrifuge()
+{
+  echo -e "Searching for *.out files in ${YEL}${infolder_path}${NC} ..."
+    test_files=$(ls -1 ${infolder_path}/*.out 2> /dev/null)
+    if [ -z "${test_files}" ]; then echo -e "  Can't find .out files in ${YEL}${infolder_path}${NC}, exiting"; exit; fi
+    filenames=$(ls -1 ${infolder_path}/*.out | xargs -n 1 basename)
+    input_for_docker="${filenames//$'\n'/ -f /input/}"
+    input_for_docker='-f /input/'${input_for_docker}
+    Num_of_samples=$(echo "$filenames" | wc -l)
+  echo -e "Found ${YEL}${Num_of_samples}${NC} file(s)"
+  docker run --rm -it \
+    -v ${infolder_path}:/input \
+    replikation/recentrifuge \
+    -n /database/ncbi_node -s LENGTH $input_for_docker -o /input/${Num_of_samples}_samples_overview.html
 }
 
 plasflow_execute()
@@ -174,21 +174,22 @@ sourmash_cluster()
 resistance_screen()
 {
   echo "Starting ABRicate resistance gene screening"
+  docker pull replikation/abricate
   output="ABRicate_resistances_${label}"
   mkdir -p $output
   DB_list=$(echo -e "resfinder\nncbi\ncard\nplasmidfinder\nargannot")
-  while read database; do
-  echo "  Screening against ${database}"
-  docker run --rm --cpus="${CPU}" \
+  # parallel
+  echo "$DB_list" | xargs -I% -P ${CPU} \
+    sh -c "docker run --rm \
     -v $assembly_path:/input \
     replikation/abricate \
-    /input/$assembly_name --nopath --quiet --mincov 25 --db ${database} > $WORKDIRPATH/${output}/results_${database}.tab
-  done <<< "$DB_list"
+    /input/$assembly_name --nopath --quiet --mincov 25 --db % > ${WORKDIRPATH}/${output}/%.tab "
 }
 
 resistance_read_screen()
 {
   echo "Starting ABRicate resistance gene screening against reads greater 1000 bp"
+  docker pull replikation/abricate
   output="ABRicate_resistances_vs_reads_${label}"
   mkdir -p $output
   echo "Preparing reads first (takes time)..."
@@ -197,13 +198,13 @@ resistance_read_screen()
   awk '/^>/ { getline seq } length(seq) >1000 { print $0 "\n" seq }' > $output/filtered_reads.fasta
   echo "Preparing done."
   DB_list=$(echo -e "resfinder\nncbi\ncard\nplasmidfinder\nargannot")
-  while read database; do
-  echo "  Screening against ${database}"
-  docker run --rm --cpus="${CPU}" \
+  # parallel
+  echo "$DB_list" | xargs -I% -P ${CPU} \
+    sh -c "docker run --rm \
     -v ${WORKDIRPATH}/${output}:/input \
     replikation/abricate \
-    /input/filtered_reads.fasta --nopath --quiet --mincov 25 --db ${database} > $WORKDIRPATH/${output}/results_${database}.tab
-  done <<< "$DB_list"
+    /input/filtered_reads.fasta --nopath --quiet --mincov 25 --db % > ${WORKDIRPATH}/${output}/%.tab "
+  rm -f $output/filtered_reads.fasta
 }
 
 binning_execute()
