@@ -17,6 +17,7 @@
     centrif_DB=''
     AB_res=''
     recentrifuge=''
+    deepvir=''
     label='results'
   # CPU cores
     CPU=$(lscpu -p | egrep -v '^#' | wc -l) # can be changed to e.g. CPU="16"
@@ -25,6 +26,7 @@
     YEL='\033[0;33m'
     NC='\033[0m'
     GRE='\033[0;32m'
+    DIM='\033[1;30m'
     ## Parameters ##
       WORKDIRPATH=$(pwd) # for docker mountpoint (-v)
       SCRIPTNAME=$(basename -- "$0")
@@ -36,27 +38,31 @@
 usage()
   {
     echo "Usage:    $SCRIPTNAME [INPUT(S)]  [OPTION(S)] [ANALYSIS TOOL(S)]"
-    echo "e.g.:     $SCRIPTNAME -n reads.fastq -t 20 -l first_assembly -Lk"
+    echo -e "${DIM}e.g.:     $SCRIPTNAME -n reads.fastq -t 20 -l first_assembly -Lk${NC}"
     echo " "
     echo "Inputs:"
-    echo -e "          [-a]    ${YEL}Assembly file / Multi fasta file${NC}; .fa or .fasta"
+    echo -e "          [-a]    ${YEL}Assembly or contig file${NC}; .fa or .fasta"
     echo -e "          [-n]    ${YEL}Nanopore read file${NC}; .fastq"
-    echo -e "          [-1]    ${YEL}Illumina fastq forward reads${NC}; .fastq or .fastq.gz"
-    echo -e "          [-2]    ${YEL}Illumina fastq reverse reads${NC}; .fastq or .fastq.gz"
-    echo -e "          [-s]    ${YEL}sequencing_summary.txt location${NC};name must be: sequencing_summary.txt"
-    echo -e "          [-f]    ${YEL}folder with input files${NC}; e.g. centrifuge_results/"
+    echo -e "          [-1]    ${YEL}Illumina forward read file${NC}; .fastq or .fastq.gz"
+    echo -e "          [-2]    ${YEL}Illumina reverse read file${NC}; .fastq or .fastq.gz"
+    echo -e "          [-s]    ${YEL}sequencing_summary.txt file${NC}; name must be: sequencing_summary.txt"
+    echo -e "          [-f]    ${YEL}directory location${NC}; e.g. centrifuge_results/"
     echo "Options:"
     echo -e "          [-t]    Default: ${GRE}-t ${CPU}${NC} - amount of cores"
     echo -e "          [-l]    Label added to output dir e.g. ${GRE}-l Seq_run_2018${NC}"
     echo "Analysis tools:"
+    echo -e "${DIM}Metagenome${NC}"
     echo -e "          [-B]    Binning via metabat-checkM of contigs; Input: ${YEL}-1 -2 -a${NC}"
     echo -e "          [-C]    Centrifuge, tax. classif. of reads (bacteria & archaea); Input: ${YEL}-n${NC} or ${YEL}-1 -2${NC}"
     echo -e "              [-Ck]   use bacteria, viruses, human and archaea database instead, ${YEL}-n ${NC}only"
     echo -e "              [-K]    Krona-recentrifuge; Input: ${YEL}-f${NC}, contains atleast 1 *.out file(s) from [-C]"
+    echo -e "${DIM}QC${NC}"
     echo -e "          [-Q]    nanopore QC, QC results for reads; Input: ${YEL}-s${NC}"
+    echo -e "${DIM}Screening${NC}"
     echo -e "          [-P]    Plasflow, plasmid binning; Input: ${YEL}-a${NC}"
     echo -e "          [-S]    Sourmash, sequence clustering; Input: ${YEL}-a${NC}"
     echo -e "          [-R]    ABRicate, resistance gene screening; Input: ${YEL}-a${NC} or ${YEL}-n${NC}"
+    echo -e "          [-D]    DeepVirFinder, predicts viral sequences; Input: ${YEL}-a${NC}"
     exit;
   }
 
@@ -243,6 +249,19 @@ binning_execute()
      bin_qa_plot -x fa /output/checkm/ /output/metabat_bins /output/plots
 }
 
+deepvirfinder_excecute()
+{
+  echo "Starting deepvirfinder predictions"
+  output="deepvirfinder_${label}"
+  mkdir -p $output
+  docker run --rm -it --cpus="${CPU}"\
+  -v $WORKDIRPATH/${output}:/output \
+  -v $assembly_path:/input \
+  replikation/deepvirfinder \
+  -i /input/${assembly_name} -o /output/
+}
+
+
 #############################
 ###   Start of script    ####
 #############################
@@ -252,7 +271,7 @@ echo " "
 echo -e "${YEL}$SCRIPTNAME -h ${NC}for help/usage"
 echo " "
 # you could add a output flag
-while getopts 'a:1:2:n:s:f:t:l:BCkKSQPRh' flag; do
+while getopts 'a:1:2:n:s:f:t:l:BCkKSQPDRh' flag; do
     case "${flag}" in
       a) assembly_file="${OPTARG}" ;;
       1) fwd_reads="${OPTARG}" ;;
@@ -269,6 +288,7 @@ while getopts 'a:1:2:n:s:f:t:l:BCkKSQPRh' flag; do
       S) sour_cluster='true';;
       Q) nanoQC='true';;
       P) plasflow='true';;
+      D) deepvir='true';;
       R) AB_res='true';;
         h) usage;;
         *) usage
@@ -298,10 +318,10 @@ done
 #############################
 ## Choose Executable(s)    ##
 #############################
-# Taxonomic read classification
+# [-C] Taxonomic read classification
   if [ ! -z "${tax_read}" ] && [ ! -z "${nano_reads}" ]; then centrifuge_nanopore ; fi
   if [ ! -z "${tax_read}" ] && [ ! -z "${fwd_reads}" ] && [ ! -z "${rev_reads}" ]; then centrifuge_illumina; fi
-  # Krona summary
+  # [-K] Krona summary
   if [ ! -z "${recentrifuge}" ] && [ ! -z "${input_folder}" ]; then recentrifuge ; fi
 # Nanopore QC
   if [ ! -z "${nanoQC}" ] && [ ! -z "${seqSum}" ]; then QC_nanopore; fi
@@ -309,7 +329,9 @@ done
   if [ ! -z "${plasflow}" ] && [ ! -z "${assembly_file}" ]; then plasflow_execute; fi
 # Sourmash assembly classification
   if [ ! -z "${sour_cluster}" ] && [ ! -z "${assembly_file}" ]; then sourmash_cluster; fi
-# Resistance gene screening
+# [-D] Deepvir prediction
+  if [ ! -z "${deepvir}" ] && [ ! -z "${assembly_file}" ]; then deepvirfinder_excecute; fi
+# [-R] Resistance gene screening
   if [ ! -z "${AB_res}" ] && [ ! -z "${assembly_file}" ]; then resistance_screen; fi
   if [ ! -z "${AB_res}" ] && [ ! -z "${nano_reads}" ]; then resistance_read_screen; fi
 # Binning
