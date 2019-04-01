@@ -24,6 +24,7 @@
   # colours, needed for echos
     RED='\033[0;31m'
     YEL='\033[0;33m'
+    BLU='\033[0;94m'
     NC='\033[0m'
     GRE='\033[0;32m'
     DIM='\033[1;30m'
@@ -52,17 +53,17 @@ usage()
     echo -e "          [-l]    Label added to output dir e.g. ${GRE}-l Seq_run_2018${NC}"
     echo "Analysis tools:"
     echo -e "${DIM}Metagenome${NC}"
-    echo -e "          [-B]    Binning via metabat-checkM of contigs; Input: ${YEL}-1 -2 -a${NC}"
-    echo -e "          [-C]    Centrifuge, tax. classif. of reads (bacteria & archaea); Input: ${YEL}-n${NC} or ${YEL}-1 -2${NC}"
+    echo -e "          [-B]    ${BLU}B${NC}inning via metabat-checkM of contigs; Input: ${YEL}-1 -2 -a${NC}"
+    echo -e "          [-C]    ${BLU}C${NC}entrifuge, tax. classif. of reads (bacteria & archaea); Input: ${YEL}-n${NC} or ${YEL}-1 -2${NC}"
     echo -e "              [-Ck]   use bacteria, viruses, human and archaea database instead, ${YEL}-n ${NC}only"
-    echo -e "              [-K]    Krona-recentrifuge; Input: ${YEL}-f${NC}, contains atleast 1 *.out file(s) from [-C]"
+    echo -e "          [-K]    ${BLU}K${NC}rona-recentrifuge; Input: ${YEL}-f${NC}, contains atleast 1 *.out file(s) from [-C]"
     echo -e "${DIM}QC${NC}"
-    echo -e "          [-Q]    nanopore QC, QC results for reads; Input: ${YEL}-s${NC}"
+    echo -e "          [-Q]    ${BLU}Q${NC}C for nanopore reads, QC results for reads; Input: ${YEL}-s${NC}"
     echo -e "${DIM}Screening${NC}"
-    echo -e "          [-P]    Plasflow, plasmid binning; Input: ${YEL}-a${NC}"
-    echo -e "          [-S]    Sourmash, sequence clustering; Input: ${YEL}-a${NC}"
-    echo -e "          [-R]    ABRicate, resistance gene screening; Input: ${YEL}-a${NC} or ${YEL}-n${NC}"
-    echo -e "          [-D]    DeepVirFinder, predicts viral sequences; Input: ${YEL}-a${NC}"
+    echo -e "          [-P]    ${BLU}P${NC}lasflow, plasmid binning; Input: ${YEL}-a${NC}"
+    echo -e "          [-S]    ${BLU}S${NC}ourmash, sequence clustering; Input: ${YEL}-a${NC}"
+    echo -e "          [-R]    ${BLU}R${NC}esistance gene screening via ABRicate; Input: ${YEL}-a${NC} or ${YEL}-n${NC}"
+    echo -e "          [-D]    ${BLU}D${NC}eepVirFinder, predicts viral sequences; Input: ${YEL}-a${NC}"
     exit;
   }
 
@@ -86,10 +87,13 @@ centrifuge_nanopore()
     replikation/$dockerimage_centri \
     centrifuge -p $CPU -x $DB_default -k 5 --min-hitlen 16 \
     -U /input/$nano_name -S /output/centrifuge_results.out --report-file /output/centrifuge_out.log
-    # create report for pavian
-    docker run --rm -i -v $WORKDIRPATH/${output}:/output replikation/$dockerimage_centri \
-    centrifuge-kreport -x $DB_default --min-score 300 --min-length 500 /output/centrifuge_results.out \
-    > $WORKDIRPATH/${output}/${nano_name%.*}_pavian_report.csv
+  # filter reads by $4 = score and $6 = min hit length
+  < ${output}/centrifuge_results.out awk '{if(NR < 2 || $4 >= 250) {print}}' | awk '{if(NR < 2 || $6 >= 150) {print}}' \
+  > ${output}/centrifuge_filtered.out
+  # create report for pavian
+  docker run --rm -i --cpus="${CPU}" -v $WORKDIRPATH/${output}:/output replikation/$dockerimage_centri \
+    centrifuge-kreport -x $DB_default --min-score 300 --min-length 500 /output/centrifuge_filtered.out \
+    > $WORKDIRPATH/${output}/${nano_name%.*}_pavian_report_filtered.csv
   echo "Results saved to $output"
 }
 
