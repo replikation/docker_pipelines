@@ -103,7 +103,7 @@ centrifuge_illumina()
     -v $rev_path:/input_rev \
     -v $WORKDIRPATH/${output}:/output \
     replikation/centrifuge \
-    centrifuge -p $CPU -x /centrifuge/database/p_compressed -k 5 --min-hitlen 16 \
+    centrifuge -p $CPU -x /centrifuge/database/p_compressed -k 5 --min-hitlen 22 \
     -1 /input_fwd/${fwd_file} -2 /input_rev/${rev_file} -S /output/centrifuge_results.out --report-file /output/centrifuge_out.log
     # create report for pavian
     docker run --rm -i -v $WORKDIRPATH/${output}:/output replikation/centrifuge \
@@ -114,18 +114,24 @@ centrifuge_illumina()
 
 recentrifuge()
 {
+  output="recentrifuge_${label}"
+  mkdir -p $output
   echo -e "Searching for *.out files in ${YEL}${infolder_path}${NC} ..."
     test_files=$(ls -1 ${infolder_path}/*.out 2> /dev/null)
     if [ -z "${test_files}" ]; then echo -e "  Can't find .out files in ${YEL}${infolder_path}${NC}, exiting"; exit; fi
-    filenames=$(ls -1 ${infolder_path}/*.out | xargs -n 1 basename)
-    input_for_docker="${filenames//$'\n'/ -f /input/}"
-    input_for_docker='-f /input/'${input_for_docker}
-    Num_of_samples=$(echo "$filenames" | wc -l)
+    # adjusting command for more than 1 file
+      filenames=$(ls -1 ${infolder_path}/*.out | xargs -n 1 basename)
+      input_for_docker="${filenames//$'\n'/ -f /input/}"
+      input_for_docker='-f /input/'${input_for_docker}
+      Num_of_samples=$(echo "$filenames" | wc -l)
   echo -e "Found ${YEL}${Num_of_samples}${NC} file(s)"
   docker run --rm -it \
     -v ${infolder_path}:/input \
+    -v $WORKDIRPATH/${output}:/output \
     replikation/recentrifuge \
-    -n /database/ncbi_node -s LENGTH $input_for_docker -o /input/${Num_of_samples}_samples_overview.html
+    -n /database/ncbi_node -y 30 $input_for_docker -o /output/${Num_of_samples}_samples_overview.html
+  # data filtering
+  # -y 30 score is 15 + sqrt(250), 250 is centrifuge score by paper for nanopore, 15+ is from recentrifuge
 }
 
 plasflow_execute()
@@ -258,7 +264,7 @@ deepvirfinder_excecute()
   -v $WORKDIRPATH/${output}:/output \
   -v $assembly_path:/input \
   replikation/deepvirfinder \
-  -i /input/${assembly_name} -o /output/
+  -c ${CPU} -i /input/${assembly_name} -o /output/
 }
 
 
