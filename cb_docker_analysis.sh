@@ -2,35 +2,23 @@
 
 ## Docker ##
   type docker >/dev/null 2>&1 || { echo -e >&2 "${RED}Docker not found.${NC} Please run: ${GRE}sudo apt install docker.io${NC}"; exit 1; }
-  # use clonal pipeline by default
-    assembly_file=''
-    plasflow=''
-    nano_reads=''
-    fwd_reads=''
-    rev_reads=''
-    input_folder=''
-    CPU=''
-    binning=''
-    tax_read=''
-    sour_cluster=''
-    nanoQC=''
-    centrif_DB=''
-    AB_res=''
-    recentrifuge=''
-    deepvir=''
-    label='results'
-  # CPU cores
-    CPU=$(lscpu -p | egrep -v '^#' | wc -l) # can be changed to e.g. CPU="16"
-  # colours, needed for echos
-    RED='\033[0;31m'
-    YEL='\033[0;33m'
-    BLU='\033[0;94m'
-    NC='\033[0m'
-    GRE='\033[0;32m'
-    DIM='\033[1;30m'
-    ## Parameters ##
-      WORKDIRPATH=$(pwd) # for docker mountpoint (-v)
-      SCRIPTNAME=$(basename -- "$0")
+## clear all variables - to be sure - paranoid ftw
+  unset assembly_file plasflow nano_reads fwd_reads rev_reads input_folder DB_in
+  unset CPU binning tax_read sour_cluster nanoQC centrif_DB AB_res recentrifuge deepvir
+## colors, needed for echos
+  RED='\033[0;31m'
+  YEL='\033[0;33m'
+  BLU='\033[0;94m'
+  NC='\033[0m'
+  GRE='\033[0;32m'
+  DIM='\033[1;30m'
+## Parameters ##
+  WORKDIRPATH=$(pwd) # for docker mountpoint (-v)
+  SCRIPTNAME=$(basename -- "$0")
+  # default for -t $CPU cores
+  CPU=$(lscpu -p | egrep -v '^#' | wc -l)
+  # default for -l
+  label='results'
 
 ###############
 ##  Modules  ##
@@ -55,7 +43,7 @@ usage()
     echo -e "${DIM}Metagenome${NC}"
     echo -e "          [-B]    ${BLU}B${NC}inning via metabat-checkM of contigs; Input: ${YEL}-1 -2 -a${NC}"
     echo -e "          [-C]    ${BLU}C${NC}entrifuge, tax. classif. of reads (bacteria & archaea); Input: ${YEL}-n${NC} or ${YEL}-1 -2${NC}"
-    echo -e "              [-Ck]   use bacteria, viruses, human and archaea database instead, ${YEL}-n ${NC}only"
+    echo -e "              [-c]   custom DB, absolut path to centrifuge database, e.g. /database/p_compressed (-n only for now)"
     echo -e "          [-K]    ${BLU}K${NC}rona-recentrifuge; Input: ${YEL}-f${NC}, contains atleast 1 *.out file(s) from [-C]"
     echo -e "${DIM}QC${NC}"
     echo -e "          [-Q]    ${BLU}Q${NC}C for nanopore reads, QC results for reads; Input: ${YEL}-s${NC}"
@@ -72,16 +60,20 @@ centrifuge_nanopore()
   # Standard parameters
   dockerimage_centri='centrifuge'
   DB_default='/centrifuge/database/p_compressed'
-  tag_centri='bac.arch'
-  # changing parameters depending on flag
-    # human and viral database
-    if [ ! -z "${centrif_DB}" ]
-    then dockerimage_centri=centrifuge_all; DB_default=/centrifuge/database/p_compressed+h+v; tag_centri=bac.arch.vir.hum; fi
+  tag_centri='bacteria_archeae'
+  unset DB_in
+  # changing default parameters for custom database
+    if [ ! -z "${centrif_DB}" ]; then
+      dockerimage_centri='centrifuge' #create a DB less image pls
+      DB_default="/DB_c/$centrif_DB_file"
+      DB_in="-v ${centrif_DB_path}:/DB_c"
+      tag_centri='custom_DB'
+    fi
   # running centrifuge
   echo "Starting centrifuge for ${tag_centri}"
   output="centrifuge_nanopore_${tag_centri}_${label}"
   mkdir -p $output
-  docker run --rm -i --cpus="${CPU}"\
+  docker run --rm -i --cpus="${CPU}" ${DB_in} \
     -v $nano_path:/input \
     -v $WORKDIRPATH/${output}:/output \
     replikation/$dockerimage_centri \
@@ -91,7 +83,7 @@ centrifuge_nanopore()
   < ${output}/centrifuge_results.out awk '{if(NR < 2 || $4 >= 250) {print}}' | awk '{if(NR < 2 || $6 >= 150) {print}}' \
   > ${output}/centrifuge_filtered.out
   # create report for pavian
-  docker run --rm -i --cpus="${CPU}" -v $WORKDIRPATH/${output}:/output replikation/$dockerimage_centri \
+  docker run --rm -i --cpus="${CPU}" ${DB_in} -v $WORKDIRPATH/${output}:/output replikation/$dockerimage_centri \
     centrifuge-kreport -x $DB_default --min-score 300 --min-length 500 /output/centrifuge_filtered.out \
     > $WORKDIRPATH/${output}/${nano_name%.*}_pavian_report_filtered.csv
   echo "Results saved to $output"
@@ -133,9 +125,7 @@ recentrifuge()
     -v ${infolder_path}:/input \
     -v $WORKDIRPATH/${output}:/output \
     replikation/recentrifuge \
-    -n /database/ncbi_node -y 30 $input_for_docker -o /output/${Num_of_samples}_samples_overview.html
-  # data filtering
-  # -y 30 score is 15 + sqrt(250), 250 is centrifuge score by paper for nanopore, 15+ is from recentrifuge
+    -n /database/ncbi_node $input_for_docker -o /output/${Num_of_samples}_samples_overview.html
 }
 
 plasflow_execute()
@@ -281,7 +271,7 @@ echo " "
 echo -e "${YEL}$SCRIPTNAME -h ${NC}for help/usage"
 echo " "
 # you could add a output flag
-while getopts 'a:1:2:n:s:f:t:l:BCkKSQPDRh' flag; do
+while getopts 'a:1:2:n:s:f:t:l:BCc:KSQPDRh' flag; do
     case "${flag}" in
       a) assembly_file="${OPTARG}" ;;
       1) fwd_reads="${OPTARG}" ;;
@@ -293,7 +283,7 @@ while getopts 'a:1:2:n:s:f:t:l:BCkKSQPDRh' flag; do
         l) label="${OPTARG}" ;;
       B) binning='true' ;;
       C) tax_read='true';;
-        k) centrif_DB='true';;
+        c) centrif_DB="${OPTARG}";;
       K) recentrifuge='true';;
       S) sour_cluster='true';;
       Q) nanoQC='true';;
@@ -306,12 +296,14 @@ while getopts 'a:1:2:n:s:f:t:l:BCkKSQPDRh' flag; do
     esac
 done
 
+# Paths for Docker compatibility
 # getting dir names from file inputs
   if [ ! -z "${assembly_file}" ]; then assembly_dir=$(dirname "$assembly_file"); fi
   if [ ! -z "${nano_reads}" ]; then nano_dir=$(dirname "$nano_reads"); fi
   if [ ! -z "${fwd_reads}" ]; then fwd_dir=$(dirname "$fwd_reads"); fi
   if [ ! -z "${rev_reads}" ]; then rev_dir=$(dirname "$rev_reads"); fi
   if [ ! -z "${seqSum}" ]; then seqSum_dir=$(dirname "$seqSum"); fi
+  if [ ! -z "${centrif_DB}" ]; then centrif_DB_dir=$(dirname "$centrif_DB"); fi
 # getting absolute paths
   if [ ! -z "${assembly_file}" ]; then assembly_path=$(cd "$assembly_dir" && pwd); fi
   if [ ! -z "${nano_reads}" ]; then nano_path=$(cd "$nano_dir" && pwd); fi
@@ -319,12 +311,13 @@ done
   if [ ! -z "${rev_reads}" ]; then rev_path=$(cd "$rev_dir" && pwd); fi
   if [ ! -z "${seqSum}" ]; then  seqSum_path=$(cd "$seqSum_dir" && pwd); fi
   if [ ! -z "${input_folder}" ]; then infolder_path=$(cd "$input_folder" && pwd); fi
+  if [ ! -z "${centrif_DB}" ]; then centrif_DB_path=$(dirname "$centrif_DB_dir"); fi
 # getting filename w/o path
   assembly_name=${assembly_file##*/}
   nano_name=${nano_reads##*/}
   fwd_file=${fwd_reads##*/}
   rev_file=${rev_reads##*/}
-
+  centrif_DB_file=${centrif_DB##*/}
 #############################
 ## Choose Executable(s)    ##
 #############################
