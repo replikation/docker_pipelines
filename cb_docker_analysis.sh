@@ -43,7 +43,7 @@ usage()
     echo -e "${DIM}Metagenome${NC}"
     echo -e "          [-B]    ${BLU}B${NC}inning via metabat-checkM of contigs; Input: ${YEL}-1 -2 -a${NC}"
     echo -e "          [-C]    ${BLU}C${NC}entrifuge, tax. classif. of reads (bacteria & archaea); Input: ${YEL}-n${NC} or ${YEL}-1 -2${NC}"
-    echo -e "              [-c]   custom DB, absolut path to centrifuge database, e.g. /database/p_compressed (-n only for now)"
+    echo -e "              [-c]   custom DB, absolut path to database w/o suffixes like .1.cf; e.g. /database/p_compressed (${YEL}-n${NC} only)"
     echo -e "          [-K]    ${BLU}K${NC}rona-recentrifuge; Input: ${YEL}-f${NC}, contains atleast 1 *.out file(s) from [-C]"
     echo -e "${DIM}QC${NC}"
     echo -e "          [-Q]    ${BLU}Q${NC}C for nanopore reads, QC results for reads; Input: ${YEL}-s${NC}"
@@ -64,7 +64,7 @@ centrifuge_nanopore()
   unset DB_in
   # changing default parameters for custom database
     if [ ! -z "${centrif_DB}" ]; then
-      dockerimage_centri='centrifuge' #create a DB less image pls
+      dockerimage_centri='centrifuge_small'
       DB_default="/DB_c/$centrif_DB_file"
       DB_in="-v ${centrif_DB_path}:/DB_c"
       tag_centri='custom_DB'
@@ -311,7 +311,7 @@ done
   if [ ! -z "${rev_reads}" ]; then rev_path=$(cd "$rev_dir" && pwd); fi
   if [ ! -z "${seqSum}" ]; then  seqSum_path=$(cd "$seqSum_dir" && pwd); fi
   if [ ! -z "${input_folder}" ]; then infolder_path=$(cd "$input_folder" && pwd); fi
-  if [ ! -z "${centrif_DB}" ]; then centrif_DB_path=$(dirname "$centrif_DB_dir"); fi
+  if [ ! -z "${centrif_DB}" ]; then centrif_DB_path=$(cd "$centrif_DB_dir" && pwd); fi
 # getting filename w/o path
   assembly_name=${assembly_file##*/}
   nano_name=${nano_reads##*/}
