@@ -43,7 +43,7 @@ usage()
     echo -e "${DIM}Metagenome${NC}"
     echo -e "          [-B]    ${BLU}B${NC}inning via metabat-checkM of contigs; Input: ${YEL}-1 -2 -a${NC}"
     echo -e "          [-C]    ${BLU}C${NC}entrifuge, tax. classif. of reads (bacteria & archaea); Input: ${YEL}-n${NC} or ${YEL}-1 -2${NC}"
-    echo -e "              [-c]   custom DB, absolut path to database w/o suffixes like .1.cf; e.g. /database/p_compressed (${YEL}-n${NC} only)"
+    echo -e "              [-c]   custom DB, absolut path to database w/o suffixes like .1.cf (${YEL}-n${NC} only)"
     echo -e "          [-K]    ${BLU}K${NC}rona-recentrifuge; Input: ${YEL}-f${NC}, contains atleast 1 *.out file(s) from [-C]"
     echo -e "${DIM}QC${NC}"
     echo -e "          [-Q]    ${BLU}Q${NC}C for nanopore reads, QC results for reads; Input: ${YEL}-s${NC}"
@@ -114,9 +114,9 @@ recentrifuge()
   mkdir -p $output
   echo -e "Searching for *.out files in ${YEL}${infolder_path}${NC} ..."
     test_files=$(ls -1 ${infolder_path}/*.out 2> /dev/null)
-    if [ -z "${test_files}" ]; then echo -e "  Can't find .out files in ${YEL}${infolder_path}${NC}, exiting"; exit; fi
+    if [ -z "${test_files}" ]; then echo -e "  Can't find .out files in ${YEL}${infolder_path}${NC}, exiting"; exit 1; fi
     # adjusting command for more than 1 file
-      filenames=$(ls -1 ${infolder_path}/*.out | xargs -n 1 basename)
+      filenames=$(find ${infolder_path}/*.out -type f -print0  | xargs -0 -n 1 basename)
       input_for_docker="${filenames//$'\n'/ -f /input/}"
       input_for_docker='-f /input/'${input_for_docker}
       Num_of_samples=$(echo "$filenames" | wc -l)
