@@ -23,6 +23,69 @@ centrifuge-build -p 4 --conversion-table seqid2taxid.map \
                  input-sequences.fna abv_4t --noauto
 ````
 
+# Database sizes for bacterial genomes
+
+* all bacteria, doesnt matter wich assembly level:
+
+## genBank complete versus incomplete
+
+* genBank, including incomplete:
+  * ``centrifuge-download -o library -a Any -m -d "bacteria" genbank > seqid2taxid.map``
+  * 216860 bacteria genomes at assembly level Any (genBank)
+* genBank, including complete:
+  * ``centrifuge-download -o library -a Any -m -d "bacteria" genbank > seqid2taxid.map``
+  *  13779 bacteria genomes at assembly level Complete Genome
+
+## refseq complete versus incomplete
+
+* refseq, including complete:
+  * ``centrifuge-download -o library -m -d "bacteria" refseq > seqid2taxid.map``
+  * 13193 bacteria genomes at assembly level Complete Genome (refseq)
+* refseq, including incomplete:
+  * ``centrifuge-download -o library -a Any -m -d "bacteria" refseq > seqid2taxid.map``
+  * 150900 bacteria genomes at assembly level Any
+
+## good but big database:
+
+````bash
+centrifuge-download -o library -a Any -m -d "archaea,bacteria" refseq > seqid2taxid.map
+````
+
+HELP for centrifuge-download:
+
+
+````bash
+centrifuge-download [<options>] <database>
+
+ARGUMENT
+ <database>        One of refseq, genbank, contaminants or taxonomy:
+                     - use refseq or genbank for genomic sequences,
+                     - contaminants gets contaminant sequences from UniVec and EmVec,
+                     - taxonomy for taxonomy mappings.
+
+COMMON OPTIONS
+ -o <directory>         Folder to which the files are downloaded. Default: '.'.
+ -P <# of threads>      Number of processes when downloading (uses xargs). Default: '1'
+
+WHEN USING database refseq OR genbank:
+ -d <domain>            What domain to download. One or more of bacteria, viral, archaea, fungi, protozoa, invertebrate, plant, vertebrate_mammalian, vertebrate_other (comma separated).
+ -a <assembly level>    Only download genomes with the specified assembly level. Default: 'Complete Genome'. Use 'Any' for any assembly level.
+ -c <refseq category>   Only download genomes in the specified refseq category. Default: any.
+ -t <taxids>            Only download the specified taxonomy IDs, comma separated. Default: any.
+ -g <program>           Download using program. Options: rsync, curl, wget. Default wget (auto-detected).
+ -r                     Download RNA sequences, too.
+ -u                     Filter unplaced sequences.
+ -m                     Mask low-complexity regions using dustmasker. Default: off.
+ -l                     Modify header to include taxonomy ID. Default: off.
+ -g                     Download GI map.
+ -v                     Verbose mode
+ ````
+
+
+
+
+
+
 ## 3. Need more RAM?
 ### create a big temporay swap until next reboot
 ````bash

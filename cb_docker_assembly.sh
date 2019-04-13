@@ -54,6 +54,7 @@ wtdbg2_clonal()
       -v ${WORKDIRPATH}/${output}:/output \
       replikation/wtdbg2_polish \
       wtdbg2 -g $gsize -x ont -L 7000 -t $CPU -i /input_nano/${nano_file} -o /output/draft
+  if [ ! -f ${WORKDIRPATH}/${output}/draft.ctg.lay.gz ]; then echo "draft not generated, exiting..." && exit 1 ; fi
     # create contigs
     docker run --rm -it --cpus="${CPU}"\
       -v ${WORKDIRPATH}/${output}:/output \
@@ -84,11 +85,12 @@ wtdbg2_meta()
   echo "Starting wtdbg2 metagenome assembly"
   output="wtdbg2_metagenome_${label}"
   mkdir -p $output
-    docker run --rm -it --cpus="${CPU}"\
+    docker run --rm -it --cpus=${CPU}\
       -v ${nano_path}:/input_nano \
       -v ${WORKDIRPATH}/${output}:/output \
       replikation/wtdbg2_polish \
       wtdbg2 -p 23 -AS 2 -s 0.05 -e 3 -t $CPU -i /input_nano/${nano_file} -o /output/draft
+  if [ ! -f ${WORKDIRPATH}/${output}/draft.ctg.lay.gz ]; then echo "draft not generated, exiting..." && exit 1 ; fi
     #create contigs
     docker run --rm -it --cpus="${CPU}"\
       -v ${WORKDIRPATH}/${output}:/output \
@@ -101,15 +103,15 @@ wtdbg2_meta()
     -v ${WORKDIRPATH}/${output}:/output \
     replikation/wtdbg2_polish \
     sh -c "minimap2 -t $CPU -x map-pb -a /output/draft.fa /input_nano/${nano_file} | samtools view -Sb - > draft.ctg.map.bam \
-    && samtools sort draft.ctg.map.bam > /output/draft.ctg.map.srt.bam \
-    && samtools view /output/draft.ctg.map.srt.bam | wtpoa-cns -t $CPU -d /output/draft.fa -i - -fo /output/draft.assembly.fa"
+    && samtools sort draft.ctg.map.bam > draft.ctg.map.srt.bam \
+    && samtools view draft.ctg.map.srt.bam | wtpoa-cns -t $CPU -d /output/draft.fa -i - -fo /output/assembly.fa "
   # Polishing 2
   echo "Starting medaka polishing"
   docker run --rm -it --cpus="${CPU}" \
     -v ${nano_path}:/input_nano \
     -v ${WORKDIRPATH}/${output}:/output \
     replikation/medaka \
-    medaka_consensus -i /input_nano/${nano_file} -d /output/draft.assembly.fa -o /output/medaka_assembly_polish -t $CPU -m $medaka_model
+    medaka_consensus -i /input_nano/${nano_file} -d /output/assembly.fa -o /output/medaka_assembly_polish -t $CPU -m $medaka_model
   exit 0
 }
 
