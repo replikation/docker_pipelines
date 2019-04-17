@@ -14,29 +14,38 @@ docker run -it -v $PWD:/input replikation/centrifuge_small /bin/bash
   * building took 20 h
 
 ````bash
-cd /input && \
-centrifuge-download -o taxonomy taxonomy && \
-centrifuge-download -o library -m -d "archaea,bacteria,viral" refseq > seqid2taxid.map && \
-cat library/*/*.fna > input-sequences.fna && \
+cd /input
+# downlaod taxonomy
+centrifuge-download -o taxonomy taxonomy
+# download sequence files
+centrifuge-download -o library -m -d "archaea,bacteria,viral" refseq > seqid2taxid.map
+# cat sequence files together (see loop below for limited disk space)
+cat library/*/*.fna > input-sequences.fna
+# build DB, the more cores the more RAM, 4 cores were working on 128 GB RAM
 centrifuge-build -p 4 --conversion-table seqid2taxid.map \
                  --taxonomy-tree taxonomy/nodes.dmp --name-table taxonomy/names.dmp \
                  input-sequences.fna abv_4t --noauto
 ````
 
-# Database sizes for bacterial genomes
+* limited space?
+* see example loop to `cat` files together and `rm` them simultaneously
+* also includes a `break` if something goes wrong
 
-* all bacteria, doesnt matter wich assembly level:
+````bash
+for fasta in library/bacteria/*.fna; do cat "$fasta" >> input-sequences.fna && rm -f "$fasta" || break ; done
+````
 
-## genBank complete versus incomplete
+# 3. Amount of Genomes
+## GenBank
 
-* genBank, including incomplete:
-  * ``centrifuge-download -o library -a Any -m -d "bacteria" genbank > seqid2taxid.map``
-  * 216860 bacteria genomes at assembly level Any (genBank)
 * genBank, including complete:
   * ``centrifuge-download -o library -a Any -m -d "bacteria" genbank > seqid2taxid.map``
   *  13779 bacteria genomes at assembly level Complete Genome
+* genBank, including incomplete:
+  * ``centrifuge-download -o library -a Any -m -d "bacteria" genbank > seqid2taxid.map``
+  * 216860 bacteria genomes at assembly level Any (genBank)
 
-## refseq complete versus incomplete
+## RefSeq
 
 * refseq, including complete:
   * ``centrifuge-download -o library -m -d "bacteria" refseq > seqid2taxid.map``
@@ -45,13 +54,9 @@ centrifuge-build -p 4 --conversion-table seqid2taxid.map \
   * ``centrifuge-download -o library -a Any -m -d "bacteria" refseq > seqid2taxid.map``
   * 150900 bacteria genomes at assembly level Any
 
-## good but big database:
 
-````bash
-centrifuge-download -o library -a Any -m -d "archaea,bacteria" refseq > seqid2taxid.map
-````
 
-HELP for centrifuge-download:
+# HELP for centrifuge-download:
 
 
 ````bash
@@ -86,8 +91,8 @@ WHEN USING database refseq OR genbank:
 
 
 
-## 3. Need more RAM?
-### create a big temporay swap until next reboot
+# 4. Need more RAM?
+## create a big temporay swap until next reboot
 ````bash
 # check the name of the actual swap file!!
 # on ubuntu 18 its swap.img
@@ -101,7 +106,7 @@ WHEN USING database refseq OR genbank:
 
 * more here: https://linuxize.com/post/create-a-linux-swap-file/
 
-# sourmash
+# 5. Sourmash
 
 * include DB into docker (its only a few MB)
 docker run -v $PWD:/input -it replikation/sourmash /bin/bash

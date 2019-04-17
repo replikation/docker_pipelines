@@ -89,7 +89,7 @@ wtdbg2_meta()
       -v ${nano_path}:/input_nano \
       -v ${WORKDIRPATH}/${output}:/output \
       replikation/wtdbg2_polish \
-      wtdbg2 -p 23 -AS 2 -s 0.05 -e 3 -t $CPU -i /input_nano/${nano_file} -o /output/draft
+      wtdbg2 -p 23 -AS 2 -s 0.05 -e 3 -t $CPU -L 5000 -K 10000 --max-node 6000 -S1 -X 6000 -g 62m -i /input_nano/${nano_file} -o /output/draft
   if [ ! -f ${WORKDIRPATH}/${output}/draft.ctg.lay.gz ]; then echo "draft not generated, exiting..." && exit 1 ; fi
     #create contigs
     docker run --rm -it --cpus="${CPU}"\
