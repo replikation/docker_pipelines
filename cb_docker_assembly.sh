@@ -107,12 +107,12 @@ wtdbg2_meta()
     && samtools sort draft.ctg.map.bam > draft.ctg.map.srt.bam \
     && samtools view draft.ctg.map.srt.bam | wtpoa-cns -t $CPU -d /output/draft.fa -i - -fo /output/assembly.fa "
   # Polishing 2
-  echo "Starting medaka polishing"
-  docker run --rm -it --cpus="${CPU}" \
-    -v ${nano_path}:/input_nano \
-    -v ${WORKDIRPATH}/${output}:/output \
-    replikation/medaka \
-    medaka_consensus -i /input_nano/${nano_file} -d /output/assembly.fa -o /output/medaka_assembly_polish -t $CPU -m $medaka_model
+#  echo "Starting medaka polishing"
+#  docker run --rm -it --cpus="${CPU}" \
+#    -v ${nano_path}:/input_nano \
+#    -v ${WORKDIRPATH}/${output}:/output \
+#    replikation/medaka \
+#    medaka_consensus -i /input_nano/${nano_file} -d /output/assembly.fa -o /output/medaka_assembly_polish -t $CPU -m $medaka_model
   exit 0
 }
 

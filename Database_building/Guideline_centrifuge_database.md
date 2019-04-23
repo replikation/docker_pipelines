@@ -22,9 +22,9 @@ centrifuge-download -o library -m -d "archaea,bacteria,viral" refseq > seqid2tax
 # cat sequence files together (see loop below for limited disk space)
 cat library/*/*.fna > input-sequences.fna
 # build DB, the more cores the more RAM, 4 cores were working on 128 GB RAM
-centrifuge-build -p 4 --conversion-table seqid2taxid.map \
+centrifuge-build -p 2 --conversion-table seqid2taxid.map \
                  --taxonomy-tree taxonomy/nodes.dmp --name-table taxonomy/names.dmp \
-                 input-sequences.fna abv_4t --noauto
+                 input-sequences.fna abv_all_2t --noauto
 ````
 
 * limited space?
