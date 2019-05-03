@@ -13,7 +13,7 @@
       nano_reads=''
       CPU=$(lscpu -p | egrep -v '^#' | wc -l)
       label='results'
-      config='dna_r9.4.1_450bps_flipflop.cfg'
+      config='dna_r9.4.1_450bps_hac'
       kittype=''
       flowcell=''
       cpu_mode=''
