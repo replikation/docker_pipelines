@@ -174,7 +174,7 @@ sourmash_cluster()
     sourmash compare /output/signature.sig -o /output/results_sig
   docker run --rm -it -v $WORKDIRPATH/${output}:/output replikation/sourmash \
     /bin/sh -c "sourmash plot --pdf --subsample=250 --labels /output/results_sig && mv *.pdf /output/"
-  echo -e "${RED}Hint: Won't plot more than 100 samples${NC}"
+  echo -e "${RED}Hint: Won't plot more than 250 samples${NC}"
   }
 
 resistance_screen()
