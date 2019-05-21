@@ -72,7 +72,7 @@ guppy_cpu()
     docker run --rm -it --cpus="${CPU}"\
       -v $nano_path:/input \
       -v $WORKDIRPATH/${output}:/output \
-      replikation/guppy \
+      nanozoo/guppy_cpu:3.0.3--98a5f40 \
       guppy_basecaller -r -i /input/ -s /output \
       --num_callers ${CPU_half} --cpu_threads_per_caller 2 \
       $flow_option $kit_option $config_option --enable_trimming on --trim_strategy dna -q 0
@@ -105,9 +105,8 @@ demultiplexing()
     docker run --rm -it --cpus="${CPU}"\
       -v $nano_path:/input \
       -v $WORKDIRPATH/${output}:/output \
-      --entrypoint guppy_barcoder \
-      replikation/guppy \
-       -i /input -s /output --barcode_kit $barkit
+      nanozoo/guppy_cpu:3.0.3--98a5f40 \
+      guppy_barcoder -i /input -s /output --barcode_kit $barkit
     exit 1
   }
 
