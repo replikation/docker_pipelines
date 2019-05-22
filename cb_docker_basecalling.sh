@@ -69,7 +69,7 @@ guppy_cpu()
       config_option="-c $config"
     fi
     mkdir -p ${output}
-    docker run --rm -it --cpus="${CPU}"\
+    docker run --rm -it --user $(id -u):$(id -g) --cpus="${CPU}"\
       -v $nano_path:/input \
       -v $WORKDIRPATH/${output}:/output \
       nanozoo/guppy_cpu:3.0.3--98a5f40 \
@@ -102,7 +102,7 @@ demultiplexing()
     type docker >/dev/null 2>&1 || { echo -e >&2 "${RED}Docker not found. Aborting.${NC}"; exit 1; }
     output="fastq_demultiplexed_$label"
     mkdir -p $output
-    docker run --rm -it --cpus="${CPU}"\
+    docker run --rm -it --user $(id -u):$(id -g) --cpus="${CPU}"\
       -v $nano_path:/input \
       -v $WORKDIRPATH/${output}:/output \
       nanozoo/guppy_cpu:3.0.3--98a5f40 \

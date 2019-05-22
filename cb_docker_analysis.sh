@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-
+# --user $(id -u):$(id -g)
 ## Docker ##
   type docker >/dev/null 2>&1 || { echo -e >&2 "${RED}Docker not found.${NC} Please run: ${GRE}sudo apt install docker.io${NC}"; exit 1; }
 ## clear all variables - to be sure - paranoid ftw
@@ -73,7 +73,7 @@ centrifuge_nanopore()
   echo "Starting centrifuge for ${tag_centri}"
   output="centrifuge_nanopore_${tag_centri}_${label}"
   mkdir -p $output
-  docker run --rm -i --cpus="${CPU}" ${DB_in} \
+  docker run --rm -i --user $(id -u):$(id -g) --cpus="${CPU}" ${DB_in} \
     -v $nano_path:/input \
     -v $WORKDIRPATH/${output}:/output \
     replikation/$dockerimage_centri \
@@ -94,7 +94,7 @@ centrifuge_illumina()
   echo "Starting centrifuge for bacteria and archaea (illumina)"
   output="centrifuge_illumina_bac.arch_${label}"
   mkdir -p $output
-  docker run --rm -i --cpus="${CPU}"\
+  docker run --rm -i --user $(id -u):$(id -g) --cpus="${CPU}"\
     -v $fwd_path:/input_fwd \
     -v $rev_path:/input_rev \
     -v $WORKDIRPATH/${output}:/output \
@@ -121,7 +121,7 @@ recentrifuge()
       input_for_docker='-f /input/'${input_for_docker}
       Num_of_samples=$(echo "$filenames" | wc -l)
   echo -e "Found ${YEL}${Num_of_samples}${NC} file(s)"
-  docker run --rm -it \
+  docker run --user $(id -u):$(id -g) --rm -it \
     -v ${infolder_path}:/input \
     -v $WORKDIRPATH/${output}:/output \
     replikation/recentrifuge \
@@ -132,13 +132,13 @@ plasflow_execute()
 {
   echo "Starting plasflow, removing contigs below 2000 bp"
   output="plasflow_${label}"
-  docker run --rm -it --cpus="${CPU}"\
+  docker run --user $(id -u):$(id -g) --rm -it --cpus="${CPU}"\
     -v $WORKDIRPATH/${output}:/output \
     -v $assembly_path:/input \
     replikation/plasflow \
     filter_sequences_by_length.pl -input /input/${assembly_name} \
     -output /output/${assembly_name} -thresh 2000
-  docker run --rm -it --cpus="${CPU}"\
+  docker run --user $(id -u):$(id -g) --rm -it --cpus="${CPU}"\
     -v $WORKDIRPATH/${output}:/output \
     replikation/plasflow \
     PlasFlow.py --input /output/${assembly_name} \
@@ -151,7 +151,7 @@ QC_nanopore()
   echo "Starting nanopore QC"
   output="nanoporeQC_${label}"
   mkdir -p $output
-  docker run --rm -it --cpus="${CPU}" \
+  docker run --user $(id -u):$(id -g) --rm -it --cpus="${CPU}" \
     -v ${WORKDIRPATH}/${output}:/output \
     -v ${seqSum_path}:/QCTutorial/RawData \
     replikation/nanopore_qc \
@@ -165,7 +165,7 @@ sourmash_cluster()
   output="sourmash_cluster_${label}"
   mkdir -p $output
   # remove .fasta from file for better picture?
-  docker run --rm -it --cpus="${CPU}"\
+  docker run --user $(id -u):$(id -g) --rm -it --cpus="${CPU}"\
     -v $WORKDIRPATH/${output}:/output \
     -v $assembly_path:/input \
     replikation/sourmash \
@@ -186,7 +186,7 @@ resistance_screen()
   DB_list=$(echo -e "resfinder\nncbi\ncard\nplasmidfinder\nargannot")
   # parallel
   echo "$DB_list" | xargs -I% -P ${CPU} \
-    sh -c "docker run --rm \
+    sh -c "docker --user $(id -u):$(id -g) run --rm \
     -v $assembly_path:/input \
     replikation/abricate \
     /input/$assembly_name --nopath --quiet --mincov 25 --db % > ${WORKDIRPATH}/${output}/%.tab "
@@ -206,7 +206,7 @@ resistance_read_screen()
   DB_list=$(echo -e "resfinder\nncbi\ncard\nplasmidfinder\nargannot")
   # parallel
   echo "$DB_list" | xargs -I% -P ${CPU} \
-    sh -c "docker run --rm \
+    sh -c "docker run --user $(id -u):$(id -g) --rm \
     -v ${WORKDIRPATH}/${output}:/input \
     replikation/abricate \
     /input/filtered_reads.fasta --nopath --quiet --mincov 25 --db % > ${WORKDIRPATH}/${output}/%.tab "
@@ -232,18 +232,18 @@ binning_execute()
     samtools sort binary.bam -o /output/${assembly_name}.srt.bam && \
     samtools index /output/${assembly_name}.srt.bam"
   # binning
-  docker run --rm -it --cpus="${CPU}"\
+  docker run --user $(id -u):$(id -g) --rm -it --cpus="${CPU}"\
     -v $assembly_path:/input \
     -v $WORKDIRPATH/${output}:/output \
     metabat/metabat \
     sh -c "cp /input/${assembly_name} /output/ && cd /output/ && runMetaBat.sh -m 1500 ${assembly_name} ${assembly_name}.srt.bam \
     && mv *metabat-bins1500 metabat_bins"
   # bin integrety & plotting
-  docker run --rm -it --cpus="${CPU}"\
+  docker run --user $(id -u):$(id -g) --rm -it --cpus="${CPU}"\
      -v $WORKDIRPATH/${output}:/output \
      replikation/checkm \
      lineage_wf -x fa /output/metabat_bins -t ${CPU} /output/checkm/
-  docker run --rm -it --cpus="${CPU}"\
+  docker run --user $(id -u):$(id -g) --rm -it --cpus="${CPU}"\
      -v $WORKDIRPATH/${output}:/output \
      replikation/checkm \
      bin_qa_plot -x fa /output/checkm/ /output/metabat_bins /output/plots
@@ -254,7 +254,7 @@ deepvirfinder_excecute()
   echo "Starting deepvirfinder predictions"
   output="deepvirfinder_${label}"
   mkdir -p $output
-  docker run --rm -it --cpus="${CPU}"\
+  docker run --user $(id -u):$(id -g) --rm -it --cpus="${CPU}"\
   -v $WORKDIRPATH/${output}:/output \
   -v $assembly_path:/input \
   replikation/deepvirfinder \

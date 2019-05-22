@@ -49,20 +49,20 @@ wtdbg2_clonal()
   echo "Starting wtdbg2 assembly"
   output="wtdbg2_clonal_${label}"
   mkdir -p $output
-    docker run --rm -it --cpus="${CPU}"\
+    docker run --user $(id -u):$(id -g) --rm -it --cpus="${CPU}"\
       -v ${nano_path}:/input_nano \
       -v ${WORKDIRPATH}/${output}:/output \
       replikation/wtdbg2_polish \
       wtdbg2 -g $gsize -x ont -L 7000 -t $CPU -i /input_nano/${nano_file} -o /output/draft
   if [ ! -f ${WORKDIRPATH}/${output}/draft.ctg.lay.gz ]; then echo "draft not generated, exiting..." && exit 1 ; fi
     # create contigs
-    docker run --rm -it --cpus="${CPU}"\
+    docker run --user $(id -u):$(id -g) --rm -it --cpus="${CPU}"\
       -v ${WORKDIRPATH}/${output}:/output \
       replikation/wtdbg2_polish \
       wtpoa-cns -t $CPU -i /output/draft.ctg.lay.gz -fo /output/draft.fa
   # Polishing 1
   echo "Starting wtdbg2 polishing"
-  docker run --rm -it --cpus="${CPU}"\
+  docker run --user $(id -u):$(id -g) --rm -it --cpus="${CPU}"\
     -v ${nano_path}:/input_nano \
     -v ${WORKDIRPATH}/${output}:/output \
     replikation/wtdbg2_polish \
@@ -85,7 +85,7 @@ wtdbg2_meta()
   echo "Starting wtdbg2 metagenome assembly"
   output="wtdbg2_metagenome_${label}"
   mkdir -p $output
-    docker run --rm -it --cpus=${CPU}\
+    docker run --user $(id -u):$(id -g) --rm -it --cpus=${CPU}\
       -v ${nano_path}:/input_nano \
       -v ${WORKDIRPATH}/${output}:/output \
       replikation/wtdbg2_polish \
@@ -93,13 +93,13 @@ wtdbg2_meta()
       # optional -X 6000 -g 62m
   if [ ! -f ${WORKDIRPATH}/${output}/draft.ctg.lay.gz ]; then echo "draft not generated, exiting..." && exit 1 ; fi
     #create contigs
-    docker run --rm -it --cpus="${CPU}"\
+    docker run --user $(id -u):$(id -g) --rm -it --cpus="${CPU}"\
       -v ${WORKDIRPATH}/${output}:/output \
       replikation/wtdbg2_polish \
       wtpoa-cns -t $CPU -i /output/draft.ctg.lay.gz -fo /output/draft.fa
   # Polishing 1
   echo "Starting wtdbg2 polishing"
-  docker run --rm -it --cpus="${CPU}"\
+  docker run --user $(id -u):$(id -g) --rm -it --cpus="${CPU}"\
     -v ${nano_path}:/input_nano \
     -v ${WORKDIRPATH}/${output}:/output \
     replikation/wtdbg2_polish \
@@ -122,7 +122,7 @@ unicycler_illumina_only()
   echo "Starting unicycler assembly"
   output="unicycler_assembly"
   mkdir -p $output
-  docker run --rm -it --cpus="${CPU}"\
+  docker run --user $(id -u):$(id -g) --rm -it --cpus="${CPU}"\
     -v $fwd_path:/input_fwd \
     -v $rev_path:/input_rev \
     -v ${WORKDIRPATH}/${output}:/output \
@@ -137,7 +137,7 @@ unicycler_hybrid()
   echo "Starting unicycler hybrid assembly"
   output="unicycler_hybrid_${label}"
   mkdir -p $output
-  docker run --rm -it --cpus="${CPU}"\
+  docker run --user $(id -u):$(id -g) --rm -it --cpus="${CPU}"\
     -v ${fwd_path}:/input_fwd \
     -v ${rev_path}:/input_rev \
     -v $nano_path:/input_nano \
@@ -153,7 +153,7 @@ meta_illumina_only()
   echo "Starting metaspades assembly"
   output="metaspades_assembly"
   mkdir -p $output
-  docker run --rm -it --cpus="${CPU}"\
+  docker run --user $(id -u):$(id -g) --rm -it --cpus="${CPU}"\
     -v ${fwd_path}:/input_fwd \
     -v ${rev_path}:/input_rev \
     -v ${WORKDIRPATH}/${output}:/output \
@@ -169,7 +169,7 @@ metaspades)
   echo "Starting metaspades hybrid assembly"
   output="metaspades_hybrid_${label}"
   mkdir -p $output
-  docker run --rm -it --cpus="${CPU}"\
+  docker run --user $(id -u):$(id -g) --rm -it --cpus="${CPU}"\
     -v $fwd_path:/input_fwd \
     -v $rev_path:/input_rev \
     -v $nano_path:/input_nano \
@@ -213,7 +213,7 @@ wtdbg2_polish)
   echo "Starting wtdbg2 metagenome assembly"
   output="Hybrid-wtdgb2-illumina_metagenome_${label}"
   mkdir -p $output
-  docker run --rm -it --cpus="${CPU}"\
+  docker run --user $(id -u):$(id -g) --rm -it --cpus="${CPU}"\
     -v ${nano_path}:/input_nano \
     -v ${WORKDIRPATH}/${output}:/output \
     replikation/wtdbg2_polish \
@@ -234,7 +234,7 @@ wtdbg2_polish)
       && samtools view /output/draft.ctg.map.srt.bam | wtpoa-cns -t $CPU -d /output/draft.fa -i - -fo /output/polished.draft.fa"
   # Polishing unicycler
   echo "Starting unicycler polishing"
-  docker run --rm -it --cpus="${CPU}"\
+  docker run --user $(id -u):$(id -g) --rm -it --cpus="${CPU}"\
     -v ${fwd_path}:/input_fwd \
     -v ${rev_path}:/input_rev \
     -v $nano_path:/input_nano \
