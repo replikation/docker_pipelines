@@ -151,7 +151,7 @@ QC_nanopore()
   echo "Starting nanopore QC"
   output="nanoporeQC_${label}"
   mkdir -p $output
-  docker run --user $(id -u):$(id -g) --rm -it --cpus="${CPU}" \
+  docker run --rm -it --cpus="${CPU}" \
     -v ${WORKDIRPATH}/${output}:/output \
     -v ${seqSum_path}:/QCTutorial/RawData \
     replikation/nanopore_qc \
