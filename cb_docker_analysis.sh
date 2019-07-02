@@ -186,7 +186,7 @@ resistance_screen()
   DB_list=$(echo -e "resfinder\nncbi\ncard\nplasmidfinder\nargannot")
   # parallel
   echo "$DB_list" | xargs -I% -P ${CPU} \
-    sh -c "docker --user $(id -u):$(id -g) run --rm \
+    sh -c "docker run --user $(id -u):$(id -g) --rm \
     -v $assembly_path:/input \
     replikation/abricate \
     /input/$assembly_name --nopath --quiet --mincov 25 --db % > ${WORKDIRPATH}/${output}/%.tab "
