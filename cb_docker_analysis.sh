@@ -130,18 +130,12 @@ recentrifuge()
 
 plasflow_execute()
 {
-  echo "Starting plasflow, removing contigs below 2000 bp"
   output="plasflow_${label}"
-  docker run --user $(id -u):$(id -g) --rm -it --cpus="${CPU}"\
+  docker run --rm -it --cpus="${CPU}"\
     -v $WORKDIRPATH/${output}:/output \
     -v $assembly_path:/input \
-    replikation/plasflow \
-    filter_sequences_by_length.pl -input /input/${assembly_name} \
-    -output /output/${assembly_name} -thresh 2000
-  docker run --user $(id -u):$(id -g) --rm -it --cpus="${CPU}"\
-    -v $WORKDIRPATH/${output}:/output \
-    replikation/plasflow \
-    PlasFlow.py --input /output/${assembly_name} \
+    quay.io/biocontainers/plasflow:1.1.0--py35_0 \
+    PlasFlow.py --input /input/${assembly_name} \
     --output /output/plasflow_predictions --threshold 0.7
   echo "Results saved to $output"
 }
