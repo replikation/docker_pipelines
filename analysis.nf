@@ -6,24 +6,31 @@ nextflow.preview.dsl=2
 */
 
 if (params.help) { exit 0, helpMSG() }
-if (params.fasta == '' ) {
-    exit 1, "input missing, use [--fasta]"}
+if (params.fasta == '' &&  params.fastq == '') {
+    exit 1, "input missing, use [--fasta] or [--fastq]"}
 
-// nanopore reads input
-/*
-if (params.fasta && params.list) {
-  Channel
-        .fromPath( params.nano, checkIfExists: true )
+// fasta input or via csv file
+if (params.fasta && params.list) { fasta_input_ch = Channel
+        .fromPath( params.fasta, checkIfExists: true )
         .splitCsv()
         .map { row -> ["${row[0]}", file("${row[1]}")] }
-        .into { fastalist_report_ch; fastalist_analyse_ch }
-fastalist_report_ch.subscribe { println "Got nano reads: ${it}" }
-}
-else if (params.fasta) {  }*/
+        .view() }
+else if (params.fasta) { fasta_input_ch = Channel
+        .fromPath( params.fasta , checkIfExists: true)
+        .map { file -> tuple(file.baseName, file) }
+        .view() }
 
-fasta_input_ch = Channel.fromPath( params.fasta , checkIfExists: true)
-                        .map { file -> tuple(file.simpleName, file) }
-                        .view()
+if (params.fastq && params.list) { fastq_input_ch = Channel
+        .fromPath( params.fastq, checkIfExists: true )
+        .splitCsv()
+        .map { row -> ["${row[0]}", file("${row[1]}")] }
+        .view() }
+else if (params.fastq) { fastq_input_ch = Channel
+        .fromPath( params.fastq , checkIfExists: true)
+        .map { file -> tuple(file.baseName, file) }
+        .view() }
+
+
 /************* 
 * DATABASES
 *************/
@@ -47,6 +54,40 @@ if (params.sourmeta) { include 'modules/sourmeta' params(output: params.output, 
 if (params.sourclass) { include 'modules/sourclass' params(output: params.output, cpus: params.cpus) 
     sourmashclass(fasta_input_ch,database_sourmash) }
 
+/*************  
+* --nanoplot | read quality via nanoplot
+*************/
+if (params.nanoplot) { include 'modules/nanoplot' params(output: params.output, cpus: params.cpus) 
+    nanoplot(fastq_input_ch) }
+
+
+// ***  TODO:
+
+// /*************  
+// * --sourcluster | Sequence clustering via sourmash   TODO
+// *************/
+// if (params.sourclass) { include 'modules/sourclass' params(output: params.output, cpus: params.cpus) 
+//     sourmashclass(fasta_input_ch,database_sourmash) }
+
+// /*************  
+// * --plasflow | plasmidprediction   TODO
+// *************/
+// if (params.plasflow) { include 'modules/sourclass' params(output: params.output, cpus: params.cpus) 
+//     sourmashclass(fasta_input_ch,database_sourmash) }
+
+// /*************  
+// * --abricate | resistance screening   TODO
+// *************/
+// if (params.abricate) { include 'modules/sourclass' params(output: params.output, cpus: params.cpus) 
+//     sourmashclass(fasta_input_ch,database_sourmash) }
+
+// /*************  
+// * --abricate-reads | resistance screening  of reads TODO
+// *************/
+// // add a fastq input, needs matching file name to work (.join)
+// if (params.abricate) { include 'modules/sourclass' params(output: params.output, cpus: params.cpus) 
+//     sourmashclass(fasta_input_ch,database_sourmash) }
+
 
 
 /*************  
@@ -60,19 +101,21 @@ def helpMSG() {
 
     Mandatory 
     --fasta             assembly file or files
+    --fastq             read file in fastq, one sample per file
  
     Options:
     --cores             max cores for local use [default: $params.cores]
     --output            name of the result folder [default: $params.output]
 
     Workflows:
-    --sourmeta          Metagenomic sourmash analysis
-    --sourclass         Taxonomic sourmash classification
+    --sourmeta          metagenomic sourmash analysis
+    --sourclass         taxonomic sourmash classification
+    --nanoplot          read quality via nanoplot
 
     Nextflow options:
-    -with-report rep.html    **not working** needs "ps" in all containers. (CPU and RAM usage report in rep.html)
+    -with-report rep.html    cpu / ram usage, may cause errors
     -with-dag chart.html     generates a flowchart for the process tree
-    -with-timeline time.html **untested** generates a timeline
+    -with-timeline time.html timeline, may cause errors
 
     Profile:
     -profile                 standard, gcloud (wip) [default: standard]
