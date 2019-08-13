@@ -110,9 +110,9 @@ def helpMSG() {
     nextflow run replikation/docker_pipelines --fasta '*/*.fasta' --sourmeta --sourclass
 
     Input:
-    --fasta             '*.fasta'   >> assembly file(s) 
-    --fastq             '*.fastq'   >> read file(s) in fastq, one sample per file
-    --dir               'foobar*/'  >> a folder(s) as input
+    --fasta             '*.fasta'   -> assembly file(s) 
+    --fastq             '*.fastq'   -> read file(s) in fastq, one sample per file
+    --dir               'foobar*/'  -> a folder(s) as input
     --list              activates csv input for --fasta --fastq instead of fasta/q files
  
 
@@ -121,8 +121,8 @@ def helpMSG() {
     --sourclass         taxonomic sourmash classification   [--fasta]  
     --nanoplot          read quality via nanoplot           [--fastq]
     --guppygpu          basecalling via guppy-gpu-nvidia    [--dir]
-    >> option flags:            [--flowcell] [--kit] [--barcode]
-    >> default settings:        [--flowcell $params.flowcell] [--kit $params.kit]
+    .. option flags:            [--flowcell] [--kit] [--barcode]
+    .. default settings:        [--flowcell $params.flowcell] [--kit $params.kit]
 
 
    Options:
