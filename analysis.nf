@@ -68,8 +68,7 @@ if (params.nanoplot && params.fastq) { include 'modules/nanoplot' params(output:
 /*************  
 * --guppy-gpu | basecalling via guppy
 *************/
-if (params.guppygpu && params.dir) { include 'modules/basecalling' 
-    params(output: params.output, flowcell: params.flowcell, barcode: params.barcode, kit: params.kit ) 
+if (params.guppygpu && params.dir) { include 'modules/basecalling' params(output: params.output, flowcell: params.flowcell, barcode: params.barcode, kit: params.kit ) 
     basecalling(dir_input_ch) }
 
 // ***  TODO:
@@ -123,7 +122,7 @@ def helpMSG() {
     --sourclass         taxonomic sourmash classification   [--fasta]
     --nanoplot          read quality via nanoplot           [--fastq]
 
-    --guppy-gpu         basecalling via guppy-gpu-nvidia    [--dir]
+    --guppygpu         basecalling via guppy-gpu-nvidia    [--dir]
     <option flags>            [--flowcell] [--kit] [--barcode]
     <default settings>        [--flowcell $params.flowcell] [--kit $params.kit]
 
