@@ -68,7 +68,7 @@ if (params.nanoplot && params.fastq) { include 'modules/nanoplot' params(output:
 /*************  
 * --guppy-gpu | basecalling via guppy
 *************/
-if (params.guppy-gpu && params.dir) { include 'modules/basecalling' 
+if (params.guppygpu && params.dir) { include 'modules/basecalling' 
     params(output: params.output, flowcell: params.flowcell, barcode: params.barcode, kit: params.kit ) 
     basecalling(dir_input_ch) }
 
