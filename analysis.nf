@@ -2,7 +2,7 @@ nextflow.preview.dsl=2
 
 /*
 * Nextflow -- Analysis Pipeline
-* Author: christian@jena@gmail.com
+* Author: christian.jena@gmail.com
 */
 
 if (params.help) { exit 0, helpMSG() }
@@ -32,7 +32,7 @@ else if (params.fastq) { fastq_input_ch = Channel
 
 if (params.dir) { dir_input_ch = Channel
         .fromPath( params.dir , checkIfExists: true)
-        .map { file -> tuple(file.baseName, file) }
+        .map { file -> tuple(file.name, file) }
         .view() }
 
 
@@ -106,32 +106,36 @@ if (params.guppygpu && params.dir) { include 'modules/basecalling' params(output
 def helpMSG() {
     log.info """
 
-    Usage:
-    nextflow run analysis.nf --fasta '*.fasta' [Workflows] [Options]
+    Usage example:
+    nextflow run replikation/docker_pipelines --fasta '*/*.fasta' --sourmeta --sourclass
 
-    Mandatory 
-    --fasta             assembly file or files
-    --fastq             read file in fastq, one sample per file
+    Input:
+    --fasta             '*.fasta'   >> assembly file(s) 
+    --fastq             '*.fastq'   >> read file(s) in fastq, one sample per file
+    --dir               'foobar*/'  >> a folder(s) as input
+    --list              activates csv input for --fasta --fastq instead of fasta/q files
  
-    Options:
+
+    Workflows [Input needed]:
+    --sourmeta          metagenomic sourmash analysis       [--fasta]
+    --sourclass         taxonomic sourmash classification   [--fasta]  
+    --nanoplot          read quality via nanoplot           [--fastq]
+    --guppygpu          basecalling via guppy-gpu-nvidia    [--dir]
+    >> option flags:            [--flowcell] [--kit] [--barcode]
+    >> default settings:        [--flowcell $params.flowcell] [--kit $params.kit]
+
+
+   Options:
     --cores             max cores for local use [default: $params.cores]
     --output            name of the result folder [default: $params.output]
 
-    Workflows:
-    --sourmeta          metagenomic sourmash analysis       [--fasta]
-    --sourclass         taxonomic sourmash classification   [--fasta]
-    --nanoplot          read quality via nanoplot           [--fastq]
-
-    --guppygpu         basecalling via guppy-gpu-nvidia    [--dir]
-    <option flags>            [--flowcell] [--kit] [--barcode]
-    <default settings>        [--flowcell $params.flowcell] [--kit $params.kit]
 
     Nextflow options:
-    -with-report rep.html    cpu / ram usage, may cause errors
+    -with-report rep.html    cpu / ram usage (may cause errors)
     -with-dag chart.html     generates a flowchart for the process tree
-    -with-timeline time.html timeline, may cause errors
+    -with-timeline time.html timeline (may cause errors)
 
     Profile:
-    -profile                 standard, gcloud (wip) [default: standard]
+    -profile                 standard [default: standard]
     """.stripIndent()
 }
