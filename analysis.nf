@@ -6,8 +6,8 @@ nextflow.preview.dsl=2
 */
 
 if (params.help) { exit 0, helpMSG() }
-if (params.fasta == '' &&  params.fastq == '') {
-    exit 1, "input missing, use [--fasta] or [--fastq]"}
+if (params.fasta == '' &&  params.fastq == '' &&  params.dir == '') {
+    exit 1, "input missing, use [--fasta] [--fastq] or [--dir]"}
 
 // fasta input or via csv file
 if (params.fasta && params.list) { fasta_input_ch = Channel
@@ -30,6 +30,11 @@ else if (params.fastq) { fastq_input_ch = Channel
         .map { file -> tuple(file.baseName, file) }
         .view() }
 
+if (params.dir) { dir_input_ch = Channel
+        .fromPath( params.dir , checkIfExists: true)
+        .map { file -> tuple(file.baseName, file) }
+        .view() }
+
 
 /************* 
 * DATABASES
@@ -45,21 +50,27 @@ if (params.sourmeta || params.sourclass) {
 /*************  
 * --sourmeta | Metagenomic classification via sourmash
 *************/
-if (params.sourmeta) { include 'modules/sourmeta' params(output: params.output, cpus: params.cpus)
+if (params.sourmeta && params.fasta) { include 'modules/sourmeta' params(output: params.output, cpus: params.cpus)
     sourmashmeta(fasta_input_ch,database_sourmash) }
 
 /*************  
 * --sourclass | Taxonomic classification via sourmash
 *************/
-if (params.sourclass) { include 'modules/sourclass' params(output: params.output, cpus: params.cpus) 
+if (params.sourclass && params.fasta) { include 'modules/sourclass' params(output: params.output, cpus: params.cpus) 
     sourmashclass(fasta_input_ch,database_sourmash) }
 
 /*************  
 * --nanoplot | read quality via nanoplot
 *************/
-if (params.nanoplot) { include 'modules/nanoplot' params(output: params.output, cpus: params.cpus) 
+if (params.nanoplot && params.fastq) { include 'modules/nanoplot' params(output: params.output, cpus: params.cpus) 
     nanoplot(fastq_input_ch) }
 
+/*************  
+* --guppy-gpu | basecalling via guppy
+*************/
+if (params.guppy-gpu && params.dir) { include 'modules/basecalling' 
+    params(output: params.output, flowcell: params.flowcell, barcode: params.barcode, kit: params.kit ) 
+    basecalling(dir_input_ch) }
 
 // ***  TODO:
 
@@ -108,9 +119,13 @@ def helpMSG() {
     --output            name of the result folder [default: $params.output]
 
     Workflows:
-    --sourmeta          metagenomic sourmash analysis
-    --sourclass         taxonomic sourmash classification
-    --nanoplot          read quality via nanoplot
+    --sourmeta          metagenomic sourmash analysis       [--fasta]
+    --sourclass         taxonomic sourmash classification   [--fasta]
+    --nanoplot          read quality via nanoplot           [--fastq]
+
+    --guppy-gpu         basecalling via guppy-gpu-nvidia    [--dir]
+    <option flags>            [--flowcell] [--kit] [--barcode]
+    <default settings>        [--flowcell $params.flowcell] [--kit $params.kit]
 
     Nextflow options:
     -with-report rep.html    cpu / ram usage, may cause errors
