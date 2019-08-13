@@ -1,4 +1,5 @@
 process basecalling {
+      echo true
       maxForks 1
       container = 'nanozoo/guppy_gpu:3.2.2-1--e90fbfe'
       containerOptions '--gpus all'
