@@ -1,3 +1,4 @@
+#!/usr/bin/env nextflow
 nextflow.preview.dsl=2
 
 /*
@@ -71,19 +72,21 @@ if (params.nanoplot && params.fastq) { include 'modules/nanoplot' params(output:
 if (params.guppygpu && params.dir) { include 'modules/basecalling' params(output: params.output, flowcell: params.flowcell, barcode: params.barcode, kit: params.kit ) 
     basecalling(dir_input_ch) }
 
-// ***  TODO:
+/*************  
+* --sourcluster | Sequence clustering via sourmash 
+*************/
+if (params.sourcluster && params.fasta) { include 'modules/sourclusterfasta' params(output: params.output, cpus: params.cpus) 
+    sourmashclusterfasta(fasta_input_ch) }
+else if (params.sourcluster && params.dir ) { include 'modules/sourclusterdir' params(output: params.output, cpus: params.cpus) 
+    sourmashclusterdir(dir_input_ch) }
 
-// /*************  
-// * --sourcluster | Sequence clustering via sourmash   TODO
-// *************/
-// if (params.sourclass) { include 'modules/sourclass' params(output: params.output, cpus: params.cpus) 
-//     sourmashclass(fasta_input_ch,database_sourmash) }
+/*************  
+* --plasflow | plasmidprediction
+*************/
+if (params.plasflow && params.fasta) { include 'modules/plasflow' params(output: params.output, cpus: params.cpus) 
+    plasflow(fasta_input_ch) }
 
-// /*************  
-// * --plasflow | plasmidprediction   TODO
-// *************/
-// if (params.plasflow) { include 'modules/sourclass' params(output: params.output, cpus: params.cpus) 
-//     sourmashclass(fasta_input_ch,database_sourmash) }
+
 
 // /*************  
 // * --abricate | resistance screening   TODO
@@ -104,38 +107,48 @@ if (params.guppygpu && params.dir) { include 'modules/basecalling' params(output
 * --help
 *************/
 def helpMSG() {
+    c_green = "\033[0;32m";
+    c_reset = "\033[0m";
+    c_yellow = "\033[0;33m";
+    c_blue = "\033[0;34m";
+    c_dim = "\033[2m";
     log.info """
-
-    Usage example:
+    ____________________________________________________________________________________________
+    
+    Nextflow Analysis modules for easy use, by Christian Brandt
+    
+    ${c_yellow}Usage example:${c_reset}
     nextflow run replikation/docker_pipelines --fasta '*/*.fasta' --sourmeta --sourclass
 
-    Input:
-    --fasta             '*.fasta'   -> assembly file(s) 
-    --fastq             '*.fastq'   -> read file(s) in fastq, one sample per file
-    --dir               'foobar*/'  -> a folder(s) as input
-    --list              activates csv input for --fasta --fastq instead of fasta/q files
+    ${c_yellow}Input:${c_reset}
+    ${c_green} --fasta ${c_reset}            '*.fasta'   -> assembly file(s) - uses filename
+    ${c_green} --fastq ${c_reset}            '*.fastq'   -> read file(s) in fastq, one sample per file - uses filename
+    ${c_green} --dir  ${c_reset}             'foobar*/'  -> a folder(s) as input - uses dirname
+    ${c_dim}  ..change above input to csv:${c_reset} ${c_green}--list ${c_reset}            
  
 
-    Workflows [Input needed]:
-    --sourmeta          metagenomic sourmash analysis       [--fasta]
-    --sourclass         taxonomic sourmash classification   [--fasta]  
-    --nanoplot          read quality via nanoplot           [--fastq]
-    --guppygpu          basecalling via guppy-gpu-nvidia    [--dir]
-    .. option flags:            [--flowcell] [--kit] [--barcode]
-    .. default settings:        [--flowcell $params.flowcell] [--kit $params.kit]
+    ${c_yellow}Workflows:${c_reset}
+    ${c_blue} --sourmeta ${c_reset}          metagenomic sourmash analysis       ${c_green}[--fasta]${c_reset}
+    ${c_blue} --sourclass ${c_reset}         taxonomic sourmash classification   ${c_green}[--fasta]  ${c_reset}
+    ${c_blue} --sourcluster ${c_reset}       sequence comparision with kmers     ${c_green}[--fasta]${c_reset} or ${c_green}[--dir]${c_reset}
+    ${c_dim}  ..inputs:                  multi-fasta: --fasta; multiple files: --dir${c_reset}
+    ${c_blue} --nanoplot  ${c_reset}         read quality via nanoplot           ${c_green}[--fastq]${c_reset}
+    ${c_blue} --guppygpu ${c_reset}          basecalling via guppy-gpu-nvidia   ${c_green} [--dir]${c_reset}
+    ${c_dim}  ..option flags:            [--flowcell] [--kit] [--barcode]
+      ..default settings:        [--flowcell $params.flowcell] [--kit $params.kit] ${c_reset}
+    ${c_blue} --plasflow ${c_reset}          predicts & seperates plasmid-seqs${c_green}   [--fasta]${c_reset}
 
-
-   Options:
+    ${c_yellow}Options:${c_reset}
     --cores             max cores for local use [default: $params.cores]
     --output            name of the result folder [default: $params.output]
 
 
-    Nextflow options:
+    ${c_dim}Nextflow options:
     -with-report rep.html    cpu / ram usage (may cause errors)
     -with-dag chart.html     generates a flowchart for the process tree
     -with-timeline time.html timeline (may cause errors)
 
     Profile:
-    -profile                 standard [default: standard]
+    -profile                 standard [default: standard] ${c_reset}
     """.stripIndent()
 }

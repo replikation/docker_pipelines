@@ -1,5 +1,6 @@
 process nanoplot {
     label 'nanoplot'
+      maxForks 2
       publishDir "${params.output}/${name}/", mode: 'copy', pattern: "*.html"
       publishDir "${params.output}/${name}/readquality/", mode: 'copy', pattern: "*_read_quality.txt"
       publishDir "${params.output}/${name}/readquality/", mode: 'copy', pattern: "*.png"
