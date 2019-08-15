@@ -17,7 +17,7 @@ if (params.fasta && params.list) { fasta_input_ch = Channel
         .map { row -> ["${row[0]}", file("${row[1]}")] }
         .view() }
 else if (params.fasta) { fasta_input_ch = Channel
-        .fromPath( params.fasta , checkIfExists: true)
+        .fromPath( params.fasta, checkIfExists: true)
         .map { file -> tuple(file.baseName, file) }
         .view() }
 
@@ -27,12 +27,12 @@ if (params.fastq && params.list) { fastq_input_ch = Channel
         .map { row -> ["${row[0]}", file("${row[1]}")] }
         .view() }
 else if (params.fastq) { fastq_input_ch = Channel
-        .fromPath( params.fastq , checkIfExists: true)
+        .fromPath( params.fastq, checkIfExists: true)
         .map { file -> tuple(file.baseName, file) }
         .view() }
 
 if (params.dir) { dir_input_ch = Channel
-        .fromPath( params.dir , checkIfExists: true)
+        .fromPath( params.dir, checkIfExists: true)
         .map { file -> tuple(file.name, file) }
         .view() }
 
