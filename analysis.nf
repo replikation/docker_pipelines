@@ -31,8 +31,13 @@ else if (params.fastq) { fastq_input_ch = Channel
         .map { file -> tuple(file.baseName, file) }
         .view() }
 
+if (params.dir && params.list) { dir_input_ch = Channel
+        .fromPath( params.dir, checkIfExists: true, type: 'dir' )
+        .splitCsv()
+        .map { row -> ["${row[0]}", file("${row[1]}")] }
+        .view() }
 if (params.dir) { dir_input_ch = Channel
-        .fromPath( params.dir, checkIfExists: true)
+        .fromPath( params.dir, checkIfExists: true, type: 'dir')
         .map { file -> tuple(file.name, file) }
         .view() }
 
