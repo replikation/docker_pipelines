@@ -8,7 +8,7 @@ process sourmashclusterdir {
     script:
       """
       cp ${dir}/* .
-      sourmash compute *.fa* --scaled 10000 -k 31
+      sourmash compute -p ${task.cpus} *.fa* --scaled 10000 -k 31
       sourmash compare *.sig -o results_sig
       sourmash plot --pdf --subsample=250 --labels results_sig
       """

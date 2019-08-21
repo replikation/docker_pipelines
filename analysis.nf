@@ -6,9 +6,22 @@ nextflow.preview.dsl=2
 * Author: christian.jena@gmail.com
 */
 
+println " "
+println "\u001B[32mProfile: $workflow.profile\033[0m"
+println " "
+println "\033[2mPipeline-version: $workflow.commitId"
+println "Nextflow-version: $nextflow.version"
+println "Workdir location:"
+println "  $workflow.workDir\u001B[0m"
+println " "
+
 if (params.help) { exit 0, helpMSG() }
+if (params.profile) {
+    exit 1, "--profile is WRONG use -profile" }
 if (params.fasta == '' &&  params.fastq == '' &&  params.dir == '') {
     exit 1, "input missing, use [--fasta] [--fastq] or [--dir]"}
+if (params.fastq && params.metamaps && params.tax_db == '') {
+    exit 1, "taxonomic database location not specified via [--tax_db]"}
 
 // fasta input or via csv file
 if (params.fasta && params.list) { fasta_input_ch = Channel
@@ -45,6 +58,7 @@ if (params.dir) { dir_input_ch = Channel
 /************* 
 * DATABASES
 *************/
+// sourmash
 if (params.sourmeta || params.sourclass) {
     sour_db_preload = file(params.sour_db_present)
     if (params.sour_db) { database_sourmash = file(params.sour_db) }
@@ -52,23 +66,26 @@ if (params.sourmeta || params.sourclass) {
     else {  include 'modules/sourmashgetdatabase'
             sourmash_download_db() 
             database_sourmash = sourmash_download_db.out } }
+// metamaps
+if (params.tax_db) {
+database_metamaps = file(params.tax_db, checkIfExists: true, type: 'dir') }
 
 /*************  
 * --sourmeta | Metagenomic classification via sourmash
 *************/
-if (params.sourmeta && params.fasta) { include 'modules/sourmeta' params(output: params.output, cpus: params.cpus)
+if (params.sourmeta && params.fasta) { include 'modules/sourmeta' params(output: params.output)
     sourmashmeta(fasta_input_ch,database_sourmash) }
 
 /*************  
 * --sourclass | Taxonomic classification via sourmash
 *************/
-if (params.sourclass && params.fasta) { include 'modules/sourclass' params(output: params.output, cpus: params.cpus) 
+if (params.sourclass && params.fasta) { include 'modules/sourclass' params(output: params.output) 
     sourmashclass(fasta_input_ch,database_sourmash) }
 
 /*************  
 * --nanoplot | read quality via nanoplot
 *************/
-if (params.nanoplot && params.fastq) { include 'modules/nanoplot' params(output: params.output, cpus: params.cpus) 
+if (params.nanoplot && params.fastq) { include 'modules/nanoplot' params(output: params.output) 
     nanoplot(fastq_input_ch) }
 
 /*************  
@@ -80,18 +97,24 @@ if (params.guppygpu && params.dir) { include 'modules/basecalling' params(output
 /*************  
 * --sourcluster | Sequence clustering via sourmash 
 *************/
-if (params.sourcluster && params.fasta) { include 'modules/sourclusterfasta' params(output: params.output, cpus: params.cpus) 
+if (params.sourcluster && params.fasta) { include 'modules/sourclusterfasta' params(output: params.output) 
     sourmashclusterfasta(fasta_input_ch) }
-else if (params.sourcluster && params.dir ) { include 'modules/sourclusterdir' params(output: params.output, cpus: params.cpus) 
+else if (params.sourcluster && params.dir ) { include 'modules/sourclusterdir' params(output: params.output) 
     sourmashclusterdir(dir_input_ch) }
 
 /*************  
 * --plasflow | plasmidprediction
 *************/
-if (params.plasflow && params.fasta) { include 'modules/plasflow' params(output: params.output, cpus: params.cpus) 
+if (params.plasflow && params.fasta) { include 'modules/plasflow' params(output: params.output) 
     plasflow(fasta_input_ch) }
 
-
+/*************  
+* --metamaps | taxonomic read classification
+*************/
+if (params.metamaps && params.fastq && params.tax_db) { 
+    include 'modules/metamaps' params(output: params.output, memory: params.memory) 
+    include 'modules/krona' params(output: params.output)
+    krona(metamaps(fastq_input_ch, database_metamaps)) }
 
 // /*************  
 // * --abricate | resistance screening   TODO
@@ -142,9 +165,12 @@ def helpMSG() {
     ${c_dim}  ..option flags:            [--flowcell] [--kit] [--barcode]
       ..default settings:        [--flowcell $params.flowcell] [--kit $params.kit] ${c_reset}
     ${c_blue} --plasflow ${c_reset}          predicts & seperates plasmid-seqs${c_green}   [--fasta]${c_reset}
+    ${c_blue} --metamaps ${c_reset}          metagenomic classification of long reads  ${c_green} [--fastq]${c_reset}
+    ${c_dim}  ..option flags:            [--memory] [--tax_db]
 
     ${c_yellow}Options:${c_reset}
     --cores             max cores for local use [default: $params.cores]
+    --memory            available RAM for --metamaps [default: $params.memory]
     --output            name of the result folder [default: $params.output]
 
 
