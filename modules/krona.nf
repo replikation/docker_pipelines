@@ -1,13 +1,13 @@
 process krona {
-      publishDir "${params.output}/${name}", mode: 'copy', pattern: "classification_results"
+      publishDir "${params.output}/${name}", mode: 'copy', pattern: "${name}.html"
       label 'krona'
     input:
       set val(name), file (krona)
     output:
-      set val(name), file("classification_results")
+      set val(name), file("${name}.html")
     script:
       """
-      ktImportTaxonomy ${krona}
+      ktImportTaxonomy classification_results.EM.reads2Taxon.krona
       mv taxonomy.krona.html ${name}.html
       """
 }

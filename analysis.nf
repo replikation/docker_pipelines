@@ -166,11 +166,11 @@ def helpMSG() {
       ..default settings:        [--flowcell $params.flowcell] [--kit $params.kit] ${c_reset}
     ${c_blue} --plasflow ${c_reset}          predicts & seperates plasmid-seqs${c_green}   [--fasta]${c_reset}
     ${c_blue} --metamaps ${c_reset}          metagenomic classification of long reads  ${c_green} [--fastq]${c_reset}
-    ${c_dim}  ..option flags:            [--memory] [--tax_db]
+    ${c_dim}  ..mendatory:               [--memory] [--tax_db]
 
     ${c_yellow}Options:${c_reset}
     --cores             max cores for local use [default: $params.cores]
-    --memory            available RAM for --metamaps [default: $params.memory]
+    --memory            80% of available RAM in GB for --metamaps [default: $params.memory]
     --output            name of the result folder [default: $params.output]
 
 
