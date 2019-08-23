@@ -166,7 +166,7 @@ def helpMSG() {
       ..default settings:        [--flowcell $params.flowcell] [--kit $params.kit] ${c_reset}
     ${c_blue} --plasflow ${c_reset}          predicts & seperates plasmid-seqs${c_green}   [--fasta]${c_reset}
     ${c_blue} --metamaps ${c_reset}          metagenomic classification of long reads  ${c_green} [--fastq]${c_reset}
-    ${c_dim}  ..mendatory:               [--memory] [--tax_db]
+    ${c_dim}  ..mendatory:               [--memory] [--tax_db] e.g. --memory 100 --tax_db /databases/miniSeq+H 
 
     ${c_yellow}Options:${c_reset}
     --cores             max cores for local use [default: $params.cores]
