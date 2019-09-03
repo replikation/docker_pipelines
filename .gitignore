@@ -1,7 +1,7 @@
 cfg
 *.log*
 wip/
-db_auto-build/
+nextflow-autodownload-databases/
 work/
 .nextflow/
 results/
