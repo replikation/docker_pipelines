@@ -10,7 +10,7 @@ nextflow.preview.dsl=2
 println " "
 println "\u001B[32mProfile: $workflow.profile\033[0m"
 println " "
-println "\033[2mPipeline-version: $workflow.commitId"
+println "\033[2mCurrent User: $workflow.userName"
 println "Nextflow-version: $nextflow.version"
 println "Starting time: $nextflow.timestamp"
 println "Workdir location:"
@@ -68,26 +68,55 @@ if (params.dir) { dir_input_ch = Channel
 * DATABASES
 **************************/
 // sourmash
-if (params.sourmeta || params.sourclass) {
-    if (params.sour_db) { database_sourmash = file(params.sour_db) }
+if (params.sour_db) { database_sourmash = file(params.sour_db) }
+
+else if (workflow.profile == 'gcloud' && (params.sourmeta || params.sourclass)) {
+        sour_db_preload = file("gs://databases-nextflow/databases/sourmash/genbank-k31.lca.json")    
+    if (sour_db_preload.exists()) { database_sourmash = sour_db_preload }
     else {  include 'modules/sourmashgetdatabase'
             sourmash_download_db() 
             database_sourmash = sourmash_download_db.out } }
+
+else if (params.sourmeta || params.sourclass) {
+            include 'modules/sourmashgetdatabase'
+            sourmash_download_db() 
+            database_sourmash = sourmash_download_db.out }
+
 // metamaps
 if (params.tax_db) {
 database_metamaps = file(params.tax_db, checkIfExists: true, type: 'dir') }
 
 // gtdbtk
-if (params.gtdbtk) {
-    if (params.gtdbtk_db) { database_gtdbtk = file(params.gtdbtk_db) }
+if (params.gtdbtk_db) { database_gtdbtk = file(params.gtdbtk_db) }
+
+else if (workflow.profile == 'gcloud' && params.gtdbtk) {
+        gtdbtk_preload = file("gs://databases-nextflow/databases/gtdbtk/release89")    
+    if (gtdbtk_preload.exists()) { database_gtdbtk = gtdbtk_preload }
     else {  include 'modules/gtdbtkgetdatabase'
             gtdbtk_download_db() 
             database_gtdbtk = gtdbtk_download_db.out } }
 
+else if (params.gtdbtk) {
+            include 'modules/gtdbtkgetdatabase'
+            gtdbtk_download_db() 
+            database_gtdbtk = gtdbtk_download_db.out }
 
 /************************** 
 * MODULES
 **************************/
+/*************  
+* --abricate | resistance screening
+*************/
+method = ['argannot', 'card', 'ncbi', 'plasmidfinder', 'resfinder', 'vfdb']
+
+if (params.abricate && params.fastq) {
+    include 'modules/abricate' params(output: params.output)
+    include 'modules/fastqTofasta' params(output: params.output)
+    abricate(fastqTofasta(fastq_input_ch)) }
+
+if (params.abricate && params.fasta) { include 'modules/abricate' params(output: params.output)
+    abricate(fasta_input_ch, method) }
+
 /*************  
 * --gtdbtk | tax classification of fastas
 *************/
@@ -146,21 +175,6 @@ if (params.sourcluster && params.fasta) { include 'modules/sourclusterfasta' par
 else if (params.sourcluster && params.dir ) { include 'modules/sourclusterdir' params(output: params.output) 
     sourmashclusterdir(dir_input_ch) }
 
-// /*************  
-// * --abricate | resistance screening   TODO
-// *************/
-// if (params.abricate) { include 'modules/sourclass' params(output: params.output, cpus: params.cpus) 
-//     sourmashclass(fasta_input_ch,database_sourmash) }
-
-// /*************  
-// * --abricate-reads | resistance screening  of reads TODO
-// *************/
-// // add a fastq input, needs matching file name to work (.join)
-// if (params.abricate) { include 'modules/sourclass' params(output: params.output, cpus: params.cpus) 
-//     sourmashclass(fasta_input_ch,database_sourmash) }
-
-
-
 /*************  
 * --help
 *************/
@@ -185,11 +199,12 @@ def helpMSG() {
     ${c_dim}  ..change above input to csv:${c_reset} ${c_green}--list ${c_reset}            
 
     ${c_yellow}Workflows:${c_reset}
+    ${c_blue} --abricate ${c_reset}          antibiotic and plasmid screening    ${c_green}[--fasta]${c_reset} or ${c_green}[--fastq]${c_reset}
     ${c_blue} --gtdbtk ${c_reset}            tax. class. via marker genes        ${c_green}[--dir]${c_reset}
     ${c_dim}  ..option flags:            [--gtdbtk_db] path to your own DB instead ${c_reset}
-    ${c_blue} --sourmeta ${c_reset}          metagenomic sourmash analysis       ${c_green}[--fasta]${c_reset}
+    ${c_blue} --sourmeta ${c_reset}          metagenomic analysis "WIMP"         ${c_green}[--fasta]${c_reset} or ${c_green}[--fastq]${c_reset}
     ${c_dim}  ..option flags:            [--sour_db] path to your own DB instead ${c_reset}
-    ${c_blue} --sourclass ${c_reset}         taxonomic sourmash classification   ${c_green}[--fasta]  ${c_reset}
+    ${c_blue} --sourclass ${c_reset}         taxonomic classification            ${c_green}[--fasta]  ${c_reset}
     ${c_dim}  ..option flags:            [--sour_db] path to your own DB instead ${c_reset}
     ${c_blue} --sourcluster ${c_reset}       sequence comparision with kmers     ${c_green}[--fasta]${c_reset} or ${c_green}[--dir]${c_reset}
     ${c_dim}  ..inputs:                  multi-fasta: --fasta; multiple files: --dir${c_reset}
@@ -199,7 +214,7 @@ def helpMSG() {
       ..default settings:        [--flowcell $params.flowcell] [--kit $params.kit] ${c_reset}
     ${c_blue} --plasflow ${c_reset}          predicts & seperates plasmid-seqs${c_green}   [--fasta]${c_reset}
     ${c_blue} --metamaps ${c_reset}          metagenomic classification of long reads  ${c_green} [--fastq]${c_reset}
-    ${c_dim}  ..mandatory:               [--memory] [--tax_db] e.g. --memory 100 --tax_db /databases/miniSeq+H 
+    ${c_dim}  ..mandatory flags:         [--memory] [--tax_db] e.g. --memory 100 --tax_db /databases/miniSeq+H 
 
     ${c_yellow}Options:${c_reset}
     --cores             max cores for local use [default: $params.cores]
@@ -209,8 +224,7 @@ def helpMSG() {
     ${c_yellow}Database(s) behaviour${c_reset}
     The Priority is:
     1. Use your own DB via the flags, e.g. [--sour_db] [--gtdbtk_db]
-    2. Without a flag the pre downloaded database will be used, located in ./db_auto-build
-    3. If 1. and 2. are not available it will download the database and put it into ./db_auto-build
+    2. Without a flag it downloads/retrives a database to/from: ./nextflow-autodownload-databases
     ${c_dim}If a auto download is not possible or implemented the workflow will tell you
 
     ${c_dim}Nextflow options:

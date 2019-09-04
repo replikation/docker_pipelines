@@ -1,5 +1,7 @@
 process sourmash_download_db {
-        storeDir 'nextflow-autodownload-databases/sourmash'
+        if (workflow.profile == 'gcloud') { publishDir 'gs://databases-nextflow/databases/sourmash', mode: 'copy', pattern: "genbank-k31.lca.json" }
+        else { storeDir 'nextflow-autodownload-databases/sourmash' }  
+        label 'ubuntu' 
       output:
         file("genbank-k31.lca.json")
       script:
@@ -8,3 +10,5 @@ process sourmash_download_db {
         gunzip genbank-k31.lca.json.gz
         """
     }
+
+    

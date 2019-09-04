@@ -1,7 +1,7 @@
-// check storeDit
-
 process gtdbtk_download_db {
-        storeDir 'nextflow-autodownload-databases/gtdbtk'
+        if (workflow.profile == 'gcloud') { publishDir 'gs://databases-nextflow/databases/gtdbtk', mode: 'copy', pattern: "release89"}
+        else { storeDir 'nextflow-autodownload-databases/gtdbtk' }  
+        label 'ubuntu'    
       output:
         file("release89")
       script:

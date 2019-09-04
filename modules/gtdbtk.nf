@@ -1,5 +1,4 @@
-// For a new release you have to change the varialble 'params.gtdbtk_db_present' in the config file
-// and the "dirname" within the gtdbtkgetdatabase.nf
+// For a new release you have to change  the "dirname" within the gtdbtkgetdatabase.nf
 // cpus are 1 due to RAM error of pplacer 
 
 process gtdbtk {
