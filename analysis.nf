@@ -110,12 +110,12 @@ else if (params.gtdbtk) {
 
 if (params.abricate && params.fastq) {
     include 'modules/filtlong' params(output: params.output)
-    include 'modules/abricate' params(output: params.output)
+    include 'modules/abricate' params(output: params.output, fastq: params.fastq)
     include 'modules/fastqTofasta' params(output: params.output)
     method = ['card', 'plasmidfinder']
     abricate(fastqTofasta(filtlong(fastq_input_ch)), method) }
 
-if (params.abricate && params.fasta) { include 'modules/abricate' params(output: params.output)
+if (params.abricate && params.fasta) { include 'modules/abricate' params(output: params.output, fastq: params.fastq)
     method = ['argannot', 'card', 'ncbi', 'plasmidfinder', 'resfinder', 'vfdb']
     abricate(fasta_input_ch, method) }
 
