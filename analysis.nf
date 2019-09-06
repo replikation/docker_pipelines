@@ -90,7 +90,7 @@ database_metamaps = file(params.tax_db, checkIfExists: true, type: 'dir') }
 if (params.gtdbtk_db) { database_gtdbtk = file(params.gtdbtk_db) }
 
 else if (workflow.profile == 'gcloud' && params.gtdbtk) {
-        gtdbtk_preload = file("gs://databases-nextflow/databases/gtdbtk/release89")    
+        gtdbtk_preload = file("gs://databases-nextflow/databases/gtdbtk/gtdbtk_r89_data.tar.gz")    
     if (gtdbtk_preload.exists()) { database_gtdbtk = gtdbtk_preload }
     else {  include 'modules/gtdbtkgetdatabase'
             gtdbtk_download_db() 
@@ -107,14 +107,16 @@ else if (params.gtdbtk) {
 /*************  
 * --abricate | resistance screening
 *************/
-method = ['argannot', 'card', 'ncbi', 'plasmidfinder', 'resfinder', 'vfdb']
 
 if (params.abricate && params.fastq) {
+    include 'modules/filtlong' params(output: params.output)
     include 'modules/abricate' params(output: params.output)
     include 'modules/fastqTofasta' params(output: params.output)
-    abricate(fastqTofasta(fastq_input_ch)) }
+    method = ['card', 'plasmidfinder']
+    abricate(fastqTofasta(filtlong(fastq_input_ch)), method) }
 
 if (params.abricate && params.fasta) { include 'modules/abricate' params(output: params.output)
+    method = ['argannot', 'card', 'ncbi', 'plasmidfinder', 'resfinder', 'vfdb']
     abricate(fasta_input_ch, method) }
 
 /*************  
