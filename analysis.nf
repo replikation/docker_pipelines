@@ -101,6 +101,21 @@ else if (params.gtdbtk) {
             gtdbtk_download_db() 
             database_gtdbtk = gtdbtk_download_db.out }
 
+// centrifuge
+if (params.centrifuge_db) { database_centrifuge = file(params.centrifuge_db) }
+
+else if (workflow.profile == 'gcloud' && params.centrifuge) {
+        centrifuge_preload = file("gs://databases-nextflow/databases/centrifuge/gtdb_r89_54k_centrifuge.tar")    
+    if (centrifuge_preload.exists()) { database_centrifuge = centrifuge_preload }
+    else {  include 'modules/centrifugegetdatabase'
+            centrifuge_download_db() 
+            database_centrifuge = centrifuge_download_db.out } }
+
+else if (params.centrifuge) {
+            include 'modules/centrifugegetdatabase'
+            centrifuge_download_db() 
+            database_centrifuge = centrifuge_download_db.out } 
+
 /************************** 
 * MODULES
 **************************/
@@ -118,6 +133,12 @@ if (params.abricate && params.fastq) {
 if (params.abricate && params.fasta) { include 'modules/abricate' params(output: params.output, fastq: params.fastq)
     method = ['argannot', 'card', 'ncbi', 'plasmidfinder', 'resfinder', 'vfdb']
     abricate(fasta_input_ch, method) }
+
+/*************  
+* --centrifuge | tax classification of fastq
+*************/
+if (params.centrifuge && params.fastq) { include 'modules/centrifuge' params(output: params.output) 
+    centrifuge(fastq_input_ch,database_centrifuge) }
 
 /*************  
 * --gtdbtk | tax classification of fastas
@@ -202,6 +223,7 @@ def helpMSG() {
 
     ${c_yellow}Workflows:${c_reset}
     ${c_blue} --abricate ${c_reset}          antibiotic and plasmid screening    ${c_green}[--fasta]${c_reset} or ${c_green}[--fastq]${c_reset}
+    ${c_blue} --centrifuge ${c_reset}        metagenomic classification of long reads  ${c_green} [--fastq]${c_reset}
     ${c_blue} --gtdbtk ${c_reset}            tax. class. via marker genes        ${c_green}[--dir]${c_reset}
     ${c_dim}  ..option flags:            [--gtdbtk_db] path to your own DB instead ${c_reset}
     ${c_blue} --sourmeta ${c_reset}          metagenomic analysis "WIMP"         ${c_green}[--fasta]${c_reset} or ${c_green}[--fastq]${c_reset}
