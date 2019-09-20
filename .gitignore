@@ -5,3 +5,4 @@ nextflow-autodownload-databases/
 work/
 .nextflow/
 results/
+centrifuge-cloud/

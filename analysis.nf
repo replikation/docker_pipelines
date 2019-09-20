@@ -224,6 +224,7 @@ def helpMSG() {
     ${c_yellow}Workflows:${c_reset}
     ${c_blue} --abricate ${c_reset}          antibiotic and plasmid screening    ${c_green}[--fasta]${c_reset} or ${c_green}[--fastq]${c_reset}
     ${c_blue} --centrifuge ${c_reset}        metagenomic classification of long reads  ${c_green} [--fastq]${c_reset}
+    ${c_dim}  ..option flags:            [--centrifuge_db] path to your own DB instead, either .tar or .tar.gz ${c_reset}
     ${c_blue} --gtdbtk ${c_reset}            tax. class. via marker genes        ${c_green}[--dir]${c_reset}
     ${c_dim}  ..option flags:            [--gtdbtk_db] path to your own DB instead ${c_reset}
     ${c_blue} --sourmeta ${c_reset}          metagenomic analysis "WIMP"         ${c_green}[--fasta]${c_reset} or ${c_green}[--fastq]${c_reset}
