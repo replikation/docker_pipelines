@@ -1,7 +1,7 @@
 process basecalling {
       echo true
       maxForks 1
-      container = 'nanozoo/guppy_gpu:3.2.2-1--e90fbfe'
+      container = 'nanozoo/guppy_gpu:3.2.4-1--195590e'
       containerOptions '--gpus all'
       publishDir "${params.output}/${name}/", mode: 'copy', pattern: "fastq_${params.output}"
     input:

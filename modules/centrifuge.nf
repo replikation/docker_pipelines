@@ -16,6 +16,9 @@ process centrifuge {
       *.tar)
         tar xf !{database}
         ;;
+      *.tar.gz)
+        tar xzf !{database}
+        ;;
       esac
       
       DBname=\$(ls *.[1-9].cf | head -1 | cut -f1 -d".")
