@@ -1,6 +1,5 @@
 process nanoplot {
     label 'nanoplot'
-      maxForks 2
       publishDir "${params.output}/${name}/", mode: 'copy', pattern: "*.html"
       publishDir "${params.output}/${name}/readquality/", mode: 'copy', pattern: "*_read_quality.txt"
       publishDir "${params.output}/${name}/readquality/", mode: 'copy', pattern: "*.png"
@@ -17,3 +16,8 @@ process nanoplot {
       mv NanoStats.txt ${name}_read_quality.txt
       """
 }
+
+/* Comments:
+We run nanoplot 2 times to get png and pdf files.
+The second time its done via the pickle file of the previous run, to save computing time
+*/

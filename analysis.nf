@@ -25,7 +25,7 @@ println " "}
 if (params.help) { exit 0, helpMSG() }
 if (params.profile) {
     exit 1, "--profile is WRONG use -profile" }
-if (params.fasta == '' &&  params.fastq == '' &&  params.dir == '') {
+if (params.fasta == '' &&  params.fastq == '' &&  params.dir == '' && params.fastqPair == '') {
     exit 1, "input missing, use [--fasta] [--fastq] or [--dir]"}
 if (params.fasta && params.fastq) {
     exit 1, "please us either: [--fasta] or [--fastq]"}   
@@ -63,58 +63,61 @@ if (params.dir) { dir_input_ch = Channel
         .map { file -> tuple(file.name, file) }
         .view() }
 
+if (params.fastqPair ) { fastqPair_input_ch = Channel
+        .fromFilePairs( params.fastqPair , checkIfExists: true )
+        .view() }
 
 /************************** 
 * DATABASES
 **************************/
 // sourmash
-if (params.sour_db) { database_sourmash = file(params.sour_db) }
+    if (params.sour_db) { database_sourmash = file(params.sour_db) }
 
-else if (workflow.profile == 'gcloud' && (params.sourmeta || params.sourclass)) {
-        sour_db_preload = file("gs://databases-nextflow/databases/sourmash/genbank-k31.lca.json")    
-    if (sour_db_preload.exists()) { database_sourmash = sour_db_preload }
-    else {  include 'modules/sourmashgetdatabase'
-            sourmash_download_db() 
-            database_sourmash = sourmash_download_db.out } }
+    else if (workflow.profile == 'gcloud' && (params.sourmeta || params.sourclass)) {
+            sour_db_preload = file("gs://databases-nextflow/databases/sourmash/genbank-k31.lca.json")    
+        if (sour_db_preload.exists()) { database_sourmash = sour_db_preload }
+        else {  include 'modules/sourmashgetdatabase'
+                sourmash_download_db() 
+                database_sourmash = sourmash_download_db.out } }
 
-else if (params.sourmeta || params.sourclass) {
-            include 'modules/sourmashgetdatabase'
-            sourmash_download_db() 
-            database_sourmash = sourmash_download_db.out }
+    else if (params.sourmeta || params.sourclass) {
+                include 'modules/sourmashgetdatabase'
+                sourmash_download_db() 
+                database_sourmash = sourmash_download_db.out }
 
 // metamaps
-if (params.tax_db) {
-database_metamaps = file(params.tax_db, checkIfExists: true, type: 'dir') }
+    if (params.tax_db) {
+    database_metamaps = file(params.tax_db, checkIfExists: true, type: 'dir') }
 
 // gtdbtk
-if (params.gtdbtk_db) { database_gtdbtk = file(params.gtdbtk_db) }
+    if (params.gtdbtk_db) { database_gtdbtk = file(params.gtdbtk_db) }
 
-else if (workflow.profile == 'gcloud' && params.gtdbtk) {
-        gtdbtk_preload = file("gs://databases-nextflow/databases/gtdbtk/gtdbtk_r89_data.tar.gz")    
-    if (gtdbtk_preload.exists()) { database_gtdbtk = gtdbtk_preload }
-    else {  include 'modules/gtdbtkgetdatabase'
-            gtdbtk_download_db() 
-            database_gtdbtk = gtdbtk_download_db.out } }
+    else if (workflow.profile == 'gcloud' && params.gtdbtk) {
+            gtdbtk_preload = file("gs://databases-nextflow/databases/gtdbtk/gtdbtk_r89_data.tar.gz")    
+        if (gtdbtk_preload.exists()) { database_gtdbtk = gtdbtk_preload }
+        else {  include 'modules/gtdbtkgetdatabase'
+                gtdbtk_download_db() 
+                database_gtdbtk = gtdbtk_download_db.out } }
 
-else if (params.gtdbtk) {
-            include 'modules/gtdbtkgetdatabase'
-            gtdbtk_download_db() 
-            database_gtdbtk = gtdbtk_download_db.out }
+    else if (params.gtdbtk) {
+                include 'modules/gtdbtkgetdatabase'
+                gtdbtk_download_db() 
+                database_gtdbtk = gtdbtk_download_db.out }
 
 // centrifuge
-if (params.centrifuge_db) { database_centrifuge = file(params.centrifuge_db) }
+    if (params.centrifuge_db) { database_centrifuge = file(params.centrifuge_db) }
 
-else if (workflow.profile == 'gcloud' && params.centrifuge) {
-        centrifuge_preload = file("gs://databases-nextflow/databases/centrifuge/gtdb_r89_54k_centrifuge.tar")    
-    if (centrifuge_preload.exists()) { database_centrifuge = centrifuge_preload }
-    else {  include 'modules/centrifugegetdatabase'
-            centrifuge_download_db() 
-            database_centrifuge = centrifuge_download_db.out } }
+    else if (workflow.profile == 'gcloud' && params.centrifuge) {
+            centrifuge_preload = file("gs://databases-nextflow/databases/centrifuge/gtdb_r89_54k_centrifuge.tar")    
+        if (centrifuge_preload.exists()) { database_centrifuge = centrifuge_preload }
+        else {  include 'modules/centrifugegetdatabase'
+                centrifuge_download_db() 
+                database_centrifuge = centrifuge_download_db.out } }
 
-else if (params.centrifuge) {
-            include 'modules/centrifugegetdatabase'
-            centrifuge_download_db() 
-            database_centrifuge = centrifuge_download_db.out } 
+    else if (params.centrifuge) {
+                include 'modules/centrifugegetdatabase'
+                centrifuge_download_db() 
+                database_centrifuge = centrifuge_download_db.out } 
 
 /************************** 
 * MODULES
@@ -122,82 +125,79 @@ else if (params.centrifuge) {
 /*************  
 * --abricate | resistance screening
 *************/
+    if (params.abricate && params.fastq) {
+        include 'modules/filtlong' params(output: params.output)
+        include 'modules/abricate' params(output: params.output, fastq: params.fastq)
+        include 'modules/fastqTofasta' params(output: params.output)
+        method = ['card', 'plasmidfinder']
+        abricate(fastqTofasta(filtlong(fastq_input_ch)), method) }
 
-if (params.abricate && params.fastq) {
-    include 'modules/filtlong' params(output: params.output)
-    include 'modules/abricate' params(output: params.output, fastq: params.fastq)
-    include 'modules/fastqTofasta' params(output: params.output)
-    method = ['card', 'plasmidfinder']
-    abricate(fastqTofasta(filtlong(fastq_input_ch)), method) }
-
-if (params.abricate && params.fasta) { include 'modules/abricate' params(output: params.output, fastq: params.fastq)
-    method = ['argannot', 'card', 'ncbi', 'plasmidfinder', 'resfinder', 'vfdb']
-    abricate(fasta_input_ch, method) }
-
+    if (params.abricate && params.fasta) { include 'modules/abricate' params(output: params.output, fastq: params.fastq)
+        method = ['argannot', 'card', 'ncbi', 'plasmidfinder', 'resfinder', 'vfdb']
+        abricate(fasta_input_ch, method) }
 /*************  
 * --centrifuge | tax classification of fastq
 *************/
-if (params.centrifuge && params.fastq) { include 'modules/centrifuge' params(output: params.output) 
-    centrifuge(fastq_input_ch,database_centrifuge) }
-
+    if (params.centrifuge && params.fastq) { include 'modules/centrifuge' params(output: params.output) 
+        centrifuge(fastq_input_ch,database_centrifuge) }
+/*************  
+* --deepHumanPathogen | Deepsequencing of Human pathogens 
+*************/
+    if (params.deepHumanPathogen && params.fastqPair) { 
+            include 'modules/downloadHuman'
+            include 'modules/bwaUnmapped'
+            include 'modules/removeViaMapping' params(output: params.output) 
+        removeViaMapping(bwaUnmapped(fastqPair_input_ch,downloadHuman())) }
 /*************  
 * --gtdbtk | tax classification of fastas
 *************/
-if (params.gtdbtk && params.dir) { include 'modules/gtdbtk' params(output: params.output) 
-    gtdbtk(dir_input_ch,database_gtdbtk) }
-
+    if (params.gtdbtk && params.dir) { include 'modules/gtdbtk' params(output: params.output) 
+        gtdbtk(dir_input_ch,database_gtdbtk) }
 /*************  
 * --guppy-gpu | basecalling via guppy
 *************/
-if (params.guppygpu && params.dir) { include 'modules/basecalling' params(output: params.output, flowcell: params.flowcell, barcode: params.barcode, kit: params.kit ) 
-    basecalling(dir_input_ch) }
-
+    if (params.guppygpu && params.dir) { include 'modules/basecalling' params(output: params.output, flowcell: params.flowcell, barcode: params.barcode, kit: params.kit ) 
+        basecalling(dir_input_ch) }
 /*************  
 * --metamaps | taxonomic read classification
 *************/
-if (params.metamaps && params.fastq && params.tax_db) { 
-    include 'modules/metamaps' params(output: params.output, memory: params.memory) 
-    include 'modules/krona' params(output: params.output)
-    krona(metamaps(fastq_input_ch, database_metamaps)) }
-
+    if (params.metamaps && params.fastq && params.tax_db) { 
+        include 'modules/metamaps' params(output: params.output, memory: params.memory) 
+        include 'modules/krona' params(output: params.output)
+        krona(metamaps(fastq_input_ch, database_metamaps)) }
 /*************  
 * --nanoplot | read quality via nanoplot
 *************/
-if (params.nanoplot && params.fastq) { include 'modules/nanoplot' params(output: params.output) 
-    nanoplot(fastq_input_ch) }
-
+    if (params.nanoplot && params.fastq) { include 'modules/nanoplot' params(output: params.output) 
+        nanoplot(fastq_input_ch) }
 /*************  
 * --plasflow | plasmidprediction
 *************/
-if (params.plasflow && params.fasta) { include 'modules/plasflow' params(output: params.output) 
-    plasflow(fasta_input_ch) }
-
+    if (params.plasflow && params.fasta) { include 'modules/plasflow' params(output: params.output) 
+        plasflow(fasta_input_ch) }
 /*************  
 * --sourmeta | Metagenomic classification via sourmash
 *************/
-if (params.sourmeta && params.fastq) {
-    include 'modules/sourmeta' params(output: params.output, fasta: params.fasta, fastq: params.fastq)
-    include 'modules/fastqTofasta' params(output: params.output)
-    include 'modules/rmetaplot' params(output: params.output)
-    rmetaplot(sourmashmeta(fastqTofasta(fastq_input_ch),database_sourmash)) }
+    if (params.sourmeta && params.fastq) {
+        include 'modules/sourmeta' params(output: params.output, fasta: params.fasta, fastq: params.fastq)
+        include 'modules/fastqTofasta' params(output: params.output)
+        include 'modules/rmetaplot' params(output: params.output)
+        rmetaplot(sourmashmeta(fastqTofasta(fastq_input_ch),database_sourmash)) }
 
-if (params.sourmeta && params.fasta) { include 'modules/sourmeta' params(output: params.output, fasta: params.fasta, fastq: params.fastq)
-    sourmashmeta(fasta_input_ch,database_sourmash) }
-
+    if (params.sourmeta && params.fasta) { include 'modules/sourmeta' params(output: params.output, fasta: params.fasta, fastq: params.fastq)
+        sourmashmeta(fasta_input_ch,database_sourmash) }
 /*************  
 * --sourclass | Taxonomic classification via sourmash
 *************/
-if (params.sourclass && params.fasta) { include 'modules/sourclass' params(output: params.output) 
-    sourmashclass(fasta_input_ch,database_sourmash) }
-
+    if (params.sourclass && params.fasta) { include 'modules/sourclass' params(output: params.output) 
+        sourmashclass(fasta_input_ch,database_sourmash) }
 /*************  
 * --sourcluster | Sequence clustering via sourmash 
 *************/
-if (params.sourcluster && params.fasta) { include 'modules/sourclusterfasta' params(output: params.output) 
-    sourmashclusterfasta(fasta_input_ch) }
-else if (params.sourcluster && params.dir ) { include 'modules/sourclusterdir' params(output: params.output) 
-    sourmashclusterdir(dir_input_ch) }
-
+    if (params.sourcluster && params.fasta) { include 'modules/sourclusterfasta' params(output: params.output) 
+        sourmashclusterfasta(fasta_input_ch) }
+    else if (params.sourcluster && params.dir ) { include 'modules/sourclusterdir' params(output: params.output) 
+        sourmashclusterdir(dir_input_ch) }
 /*************  
 * --help
 *************/
@@ -225,6 +225,7 @@ def helpMSG() {
     ${c_blue} --abricate ${c_reset}          antibiotic and plasmid screening    ${c_green}[--fasta]${c_reset} or ${c_green}[--fastq]${c_reset}
     ${c_blue} --centrifuge ${c_reset}        metagenomic classification of long reads  ${c_green} [--fastq]${c_reset}
     ${c_dim}  ..option flags:            [--centrifuge_db] path to your own DB instead, either .tar or .tar.gz ${c_reset}
+    ${c_blue} --deepHumanPathogen ${c_reset} pathogen identification in human  ${c_green} [--fastq '*_R{1,2}.fastq.gz']${c_reset}
     ${c_blue} --gtdbtk ${c_reset}            tax. class. via marker genes        ${c_green}[--dir]${c_reset}
     ${c_dim}  ..option flags:            [--gtdbtk_db] path to your own DB instead ${c_reset}
     ${c_blue} --sourmeta ${c_reset}          metagenomic analysis "WIMP"         ${c_green}[--fasta]${c_reset} or ${c_green}[--fastq]${c_reset}
