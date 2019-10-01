@@ -144,8 +144,8 @@ if (params.fastqPair ) { fastqPair_input_ch = Channel
 * --deepHumanPathogen | Deepsequencing of Human pathogens 
 *************/
     if (params.deepHumanPathogen && params.fastqPair) { 
-            include 'modules/downloadHuman'
-            include 'modules/bwaUnmapped'
+            include 'modules/downloadHuman' params(output: params.output) 
+            include 'modules/bwaUnmapped' params(output: params.output) 
             include 'modules/removeViaMapping' params(output: params.output) 
         removeViaMapping(bwaUnmapped(fastqPair_input_ch,downloadHuman())) }
 /*************  
