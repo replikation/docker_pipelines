@@ -25,7 +25,7 @@ println " "}
 if (params.help) { exit 0, helpMSG() }
 if (params.profile) {
     exit 1, "--profile is WRONG use -profile" }
-if (params.fasta == '' &&  params.fastq == '' &&  params.dir == '' && params.fastqPair == '') {
+if (params.fasta == '' &&  params.fastq == '' &&  params.dir == '' && params.fastqPair == '' && !params.dev) {
     exit 1, "input missing, use [--fasta] [--fastq] or [--dir]"}
 if (params.fasta && params.fastq) {
     exit 1, "please us either: [--fasta] or [--fastq]"}   
@@ -198,6 +198,16 @@ if (params.fastqPair ) { fastqPair_input_ch = Channel
         sourmashclusterfasta(fasta_input_ch) }
     else if (params.sourcluster && params.dir ) { include 'modules/sourclusterdir' params(output: params.output) 
         sourmashclusterdir(dir_input_ch) }
+
+/*************  
+* --dev | Quick test and defs modules
+*************/
+
+if (params.dev ) { 
+    include 'modules/dev' params(output: params.output)
+    databasefile = file("gs://databases-nextflow/databases/thinspace/4centrifuge.tar.gz")
+        dev(databasefile) }
+
 /*************  
 * --help
 *************/
@@ -225,7 +235,7 @@ def helpMSG() {
     ${c_blue} --abricate ${c_reset}          antibiotic and plasmid screening    ${c_green}[--fasta]${c_reset} or ${c_green}[--fastq]${c_reset}
     ${c_blue} --centrifuge ${c_reset}        metagenomic classification of long reads  ${c_green} [--fastq]${c_reset}
     ${c_dim}  ..option flags:            [--centrifuge_db] path to your own DB instead, either .tar or .tar.gz ${c_reset}
-    ${c_blue} --deepHumanPathogen ${c_reset} pathogen identification in human  ${c_green} [--fastq '*_R{1,2}.fastq.gz']${c_reset}
+    ${c_blue} --deepHumanPathogen ${c_reset} pathogen identification in human  ${c_green} [--fastqPair '*_R{1,2}.fastq.gz']${c_reset}
     ${c_blue} --gtdbtk ${c_reset}            tax. class. via marker genes        ${c_green}[--dir]${c_reset}
     ${c_dim}  ..option flags:            [--gtdbtk_db] path to your own DB instead ${c_reset}
     ${c_blue} --sourmeta ${c_reset}          metagenomic analysis "WIMP"         ${c_green}[--fasta]${c_reset} or ${c_green}[--fastq]${c_reset}
