@@ -205,8 +205,9 @@ if (params.fastqPair ) { fastqPair_input_ch = Channel
 
 if (params.dev ) { 
     include 'modules/dev' params(output: params.output)
+    repeater = ['8', '16', '24', '32', '40', '48']
     databasefile = file("gs://databases-nextflow/databases/thinspace/4centrifuge.tar.gz")
-        dev(databasefile) }
+        dev(databasefile, repeater) }
 
 /*************  
 * --help
