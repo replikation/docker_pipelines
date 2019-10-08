@@ -10,14 +10,14 @@ process centrifuge {
     shell:
       """
       case "!{database}" in
-      *.gz | *.tgz ) 
+      *.tar.gz)
         tar xzf !{database}
+        ;;
+      *.gz | *.tgz ) 
+        gzip -d !{database}
         ;;
       *.tar)
         tar xf !{database}
-        ;;
-      *.tar.gz)
-        tar xzf !{database}
         ;;
       esac
       

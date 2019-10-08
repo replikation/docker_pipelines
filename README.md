@@ -1,6 +1,6 @@
 # Docker pipelines
 
-![](https://img.shields.io/badge/made%20with-shell-green.svg)
+![](https://img.shields.io/badge/nextflow-19.07.0-brightgreen)
 ![](https://img.shields.io/badge/uses-docker-blue.svg)
 ![](https://img.shields.io/badge/licence-GPL--3.0-lightgrey.svg)
 

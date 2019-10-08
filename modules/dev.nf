@@ -17,6 +17,10 @@ process dev {
       """
 }
 
-
+/*
+cpus = 40 ; memory = '320 GB'
+with -p 8
+builds up a Database with 30k genomes
+*/
 
 

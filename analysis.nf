@@ -125,16 +125,22 @@ if (params.fastqPair ) { fastqPair_input_ch = Channel
 /*************  
 * --abricate | resistance screening
 *************/
-    if (params.abricate && params.fastq) {
-        include 'modules/filtlong' params(output: params.output)
-        include 'modules/abricate' params(output: params.output, fastq: params.fastq)
-        include 'modules/fastqTofasta' params(output: params.output)
-        method = ['card', 'plasmidfinder']
-        abricate(fastqTofasta(filtlong(fastq_input_ch)), method) }
-
     if (params.abricate && params.fasta) { include 'modules/abricate' params(output: params.output, fastq: params.fastq)
         method = ['argannot', 'card', 'ncbi', 'plasmidfinder', 'resfinder', 'vfdb']
         abricate(fasta_input_ch, method) }
+
+    if (params.abricate && params.fastq) { 
+        include 'modules/abricateBatch'
+        include 'modules/abricateParser' params(output: params.output)
+        include 'modules/abricatePlot' params(output: params.output)
+        include 'modules/fastqTofasta' params(output: params.output)
+        method = ['ncbi', 'plasmidfinder']
+        //split fastq batches
+        abricateBatch(fastqTofasta(fastq_input_ch.splitFastq(by: 100000, file: true)), method) 
+            abricateBatch.out.collectFile(storeDir: "${params.output}/abricate-batch", skip: 1, keepHeader: true)
+            newChannel = abricateBatch.out.collectFile(skip: 1, keepHeader: true).map { file -> tuple(file.baseName, file)}
+        abricatePlot(abricateParser(newChannel)) }
+
 /*************  
 * --centrifuge | tax classification of fastq
 *************/

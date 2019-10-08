@@ -1,7 +1,5 @@
-process abricate {
-    publishDir "${params.output}/${name}/ABR-Screening", mode: 'copy', pattern: "*.tab"
-    label 'abricate'
-    //if (workflow.profile == 'standard' && params.fastq) { maxForks 1 }   
+process abricateBatch {
+    label 'abricate'   
   input:
     set val(name), file(fasta) 
     each method
@@ -13,3 +11,4 @@ process abricate {
     """
 }
 
+// tempDir may be neccessary
