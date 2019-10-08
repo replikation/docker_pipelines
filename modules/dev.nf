@@ -6,7 +6,7 @@ process dev {
       file(database)
       each repeater
     output:
-      set val(name), file("*.cf")
+      file("*.cf")
     shell:
       """
       tar xzf ${database}
