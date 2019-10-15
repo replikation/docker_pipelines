@@ -1,6 +1,6 @@
 process downloadHuman {
     label 'ubuntu'
-    //storeDir '/tmp/stored-human-genome'
+    storeDir 'stored-human-genome/'
   output:
     file("*.fna")
   shell:

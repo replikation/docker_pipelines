@@ -7,7 +7,7 @@ process removeViaMapping {
         set val(name), file("${name}_forward_non_mappers.fastq.gz"), file("${name}_reverse_non_mappers.fastq.gz")
     script:
         """    
-        seqtk subseq library1.forward.fastq ${readlist} | gzip > ${name}_forward_non_mappers.fastq.gz
-        seqtk subseq library1.reverse.fastq ${readlist} | gzip > ${name}_reverse_non_mappers.fastq.gz
+        seqtk subseq ${shortreads[0]} ${readlist} | gzip > ${name}_forward_non_mappers.fastq.gz
+        seqtk subseq ${shortreads[1]} ${readlist} | gzip > ${name}_reverse_non_mappers.fastq.gz
         """
 }

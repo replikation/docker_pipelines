@@ -6,10 +6,10 @@ process abricate {
     set val(name), file(fasta) 
     each method
   output:
-	  set val(name), file("*.tab") 
+	  set val(name), val("${method}"), file("*.tab")
   script:
     """
-  	abricate ${fasta} --nopath --quiet --mincov 80 --db ${method} > ${method}.tab
+  	abricate ${fasta} --nopath --quiet --mincov 85 --db ${method} > ${method}.tab
     """
 }
 

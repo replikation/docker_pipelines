@@ -125,14 +125,17 @@ if (params.fastqPair ) { fastqPair_input_ch = Channel
 /*************  
 * --abricate | resistance screening
 *************/
-    if (params.abricate && params.fasta) { include 'modules/abricate' params(output: params.output, fastq: params.fastq)
-        method = ['argannot', 'card', 'ncbi', 'plasmidfinder', 'resfinder', 'vfdb']
-        abricate(fasta_input_ch, method) }
+    if (params.abricate && params.fasta) { 
+        include 'modules/PARSER/abricateParserFASTA' params(output: params.output)
+        include 'modules/PLOTS/abricatePlotFASTA' params(output: params.output)
+        include 'modules/abricate' params(output: params.output)
+        method = ['argannot', 'card', 'ncbi', 'plasmidfinder', 'resfinder']
+        abricatePlotFASTA(abricateParserFASTA(abricate(fasta_input_ch, method))) }
 
     if (params.abricate && params.fastq) { 
         include 'modules/abricateBatch'
-        include 'modules/abricateParser' params(output: params.output)
-        include 'modules/abricatePlot' params(output: params.output)
+        include 'modules/PARSER/abricateParser' params(output: params.output)
+        include 'modules/PLOTS/abricatePlot' params(output: params.output)
         include 'modules/fastqTofasta' params(output: params.output)
         method = ['ncbi', 'plasmidfinder']
         //split fastq batches
