@@ -2,10 +2,10 @@ process sourmashmeta {
       publishDir "${params.output}/${name}", mode: 'copy', pattern: "metagenomic-composition.txt"
       label 'sourmash'
     input:
-      set val(name), file(fasta) 
+      tuple val(name), file(fasta) 
       file(database) 
     output:
-      set val(name), file("metagenomic-composition.txt")
+      tuple val(name), file("metagenomic-composition.txt")
     script:
       if (params.fasta)
       """

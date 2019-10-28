@@ -32,6 +32,7 @@ if (params.fasta && params.fastq) {
 if (params.fastq && params.metamaps && params.tax_db == '') {
     exit 1, "taxonomic database location not specified via [--tax_db]"}
 
+
 // fasta input or via csv file
 if (params.fasta && params.list) { fasta_input_ch = Channel
         .fromPath( params.fasta, checkIfExists: true )
@@ -67,6 +68,7 @@ if (params.fastqPair ) { fastqPair_input_ch = Channel
         .fromFilePairs( params.fastqPair , checkIfExists: true )
         .view() }
 
+workflow {
 /************************** 
 * DATABASES
 **************************/
@@ -76,12 +78,12 @@ if (params.fastqPair ) { fastqPair_input_ch = Channel
     else if (workflow.profile == 'gcloud' && (params.sourmeta || params.sourclass)) {
             sour_db_preload = file("gs://databases-nextflow/databases/sourmash/genbank-k31.lca.json")    
         if (sour_db_preload.exists()) { database_sourmash = sour_db_preload }
-        else {  include 'modules/sourmashgetdatabase'
+        else {  include './modules/sourmashgetdatabase'
                 sourmash_download_db() 
                 database_sourmash = sourmash_download_db.out } }
 
     else if (params.sourmeta || params.sourclass) {
-                include 'modules/sourmashgetdatabase'
+                include './modules/sourmashgetdatabase'
                 sourmash_download_db() 
                 database_sourmash = sourmash_download_db.out }
 
@@ -95,12 +97,12 @@ if (params.fastqPair ) { fastqPair_input_ch = Channel
     else if (workflow.profile == 'gcloud' && params.gtdbtk) {
             gtdbtk_preload = file("gs://databases-nextflow/databases/gtdbtk/gtdbtk_r89_data.tar.gz")    
         if (gtdbtk_preload.exists()) { database_gtdbtk = gtdbtk_preload }
-        else {  include 'modules/gtdbtkgetdatabase'
+        else {  include './modules/gtdbtkgetdatabase'
                 gtdbtk_download_db() 
                 database_gtdbtk = gtdbtk_download_db.out } }
 
     else if (params.gtdbtk) {
-                include 'modules/gtdbtkgetdatabase'
+                include './modules/gtdbtkgetdatabase'
                 gtdbtk_download_db() 
                 database_gtdbtk = gtdbtk_download_db.out }
 
@@ -110,12 +112,12 @@ if (params.fastqPair ) { fastqPair_input_ch = Channel
     else if (workflow.profile == 'gcloud' && params.centrifuge) {
             centrifuge_preload = file("gs://databases-nextflow/databases/centrifuge/gtdb_r89_54k_centrifuge.tar")    
         if (centrifuge_preload.exists()) { database_centrifuge = centrifuge_preload }
-        else {  include 'modules/centrifugegetdatabase'
+        else {  include './modules/centrifugegetdatabase'
                 centrifuge_download_db() 
                 database_centrifuge = centrifuge_download_db.out } }
 
     else if (params.centrifuge) {
-                include 'modules/centrifugegetdatabase'
+                include './modules/centrifugegetdatabase'
                 centrifuge_download_db() 
                 database_centrifuge = centrifuge_download_db.out } 
 
@@ -126,17 +128,17 @@ if (params.fastqPair ) { fastqPair_input_ch = Channel
 * --abricate | resistance screening
 *************/
     if (params.abricate && params.fasta) { 
-        include 'modules/PARSER/abricateParserFASTA' params(output: params.output)
-        include 'modules/PLOTS/abricatePlotFASTA' params(output: params.output)
-        include 'modules/abricate' params(output: params.output)
+        include './modules/PARSER/abricateParserFASTA' params(output: params.output)
+        include './modules/PLOTS/abricatePlotFASTA' params(output: params.output)
+        include './modules/abricate' params(output: params.output)
         method = ['argannot', 'card', 'ncbi', 'plasmidfinder', 'resfinder']
         abricatePlotFASTA(abricateParserFASTA(abricate(fasta_input_ch, method))) }
 
     if (params.abricate && params.fastq) { 
-        include 'modules/abricateBatch'
-        include 'modules/PARSER/abricateParser' params(output: params.output)
-        include 'modules/PLOTS/abricatePlot' params(output: params.output)
-        include 'modules/fastqTofasta' params(output: params.output)
+        include './modules/abricateBatch'
+        include './modules/PARSER/abricateParser' params(output: params.output)
+        include './modules/PLOTS/abricatePlot' params(output: params.output)
+        include './modules/fastqTofasta' params(output: params.output)
         method = ['ncbi', 'plasmidfinder']
         //split fastq batches
         abricateBatch(fastqTofasta(fastq_input_ch.splitFastq(by: 100000, file: true)), method) 
@@ -147,65 +149,65 @@ if (params.fastqPair ) { fastqPair_input_ch = Channel
 /*************  
 * --centrifuge | tax classification of fastq
 *************/
-    if (params.centrifuge && params.fastq) { include 'modules/centrifuge' params(output: params.output) 
+    if (params.centrifuge && params.fastq) { include './modules/centrifuge' params(output: params.output) 
         centrifuge(fastq_input_ch,database_centrifuge) }
 /*************  
 * --deepHumanPathogen | Deepsequencing of Human pathogens 
 *************/
     if (params.deepHumanPathogen && params.fastqPair) { 
-            include 'modules/downloadHuman' params(output: params.output) 
-            include 'modules/bwaUnmapped' params(output: params.output) 
-            include 'modules/removeViaMapping' params(output: params.output) 
+            include './modules/downloadHuman' params(output: params.output) 
+            include './modules/bwaUnmapped' params(output: params.output) 
+            include './modules/removeViaMapping' params(output: params.output) 
         removeViaMapping(bwaUnmapped(fastqPair_input_ch,downloadHuman())) }
 /*************  
 * --gtdbtk | tax classification of fastas
 *************/
-    if (params.gtdbtk && params.dir) { include 'modules/gtdbtk' params(output: params.output) 
+    if (params.gtdbtk && params.dir) { include './modules/gtdbtk' params(output: params.output) 
         gtdbtk(dir_input_ch,database_gtdbtk) }
 /*************  
 * --guppy-gpu | basecalling via guppy
 *************/
-    if (params.guppygpu && params.dir) { include 'modules/basecalling' params(output: params.output, flowcell: params.flowcell, barcode: params.barcode, kit: params.kit ) 
+    if (params.guppygpu && params.dir) { include './modules/basecalling' params(output: params.output, flowcell: params.flowcell, barcode: params.barcode, kit: params.kit ) 
         basecalling(dir_input_ch) }
 /*************  
 * --metamaps | taxonomic read classification
 *************/
     if (params.metamaps && params.fastq && params.tax_db) { 
-        include 'modules/metamaps' params(output: params.output, memory: params.memory) 
-        include 'modules/krona' params(output: params.output)
+        include './modules/metamaps' params(output: params.output, memory: params.memory) 
+        include './modules/krona' params(output: params.output)
         krona(metamaps(fastq_input_ch, database_metamaps)) }
 /*************  
 * --nanoplot | read quality via nanoplot
 *************/
-    if (params.nanoplot && params.fastq) { include 'modules/nanoplot' params(output: params.output) 
+    if (params.nanoplot && params.fastq) { include './modules/nanoplot' params(output: params.output) 
         nanoplot(fastq_input_ch) }
 /*************  
 * --plasflow | plasmidprediction
 *************/
-    if (params.plasflow && params.fasta) { include 'modules/plasflow' params(output: params.output) 
+    if (params.plasflow && params.fasta) { include './modules/plasflow' params(output: params.output) 
         plasflow(fasta_input_ch) }
 /*************  
 * --sourmeta | Metagenomic classification via sourmash
 *************/
     if (params.sourmeta && params.fastq) {
-        include 'modules/sourmeta' params(output: params.output, fasta: params.fasta, fastq: params.fastq)
-        include 'modules/fastqTofasta' params(output: params.output)
-        include 'modules/rmetaplot' params(output: params.output)
+        include './modules/sourmeta' params(output: params.output, fasta: params.fasta, fastq: params.fastq)
+        include './modules/fastqTofasta' params(output: params.output)
+        include './modules/rmetaplot' params(output: params.output)
         rmetaplot(sourmashmeta(fastqTofasta(fastq_input_ch),database_sourmash)) }
 
-    if (params.sourmeta && params.fasta) { include 'modules/sourmeta' params(output: params.output, fasta: params.fasta, fastq: params.fastq)
+    if (params.sourmeta && params.fasta) { include './modules/sourmeta' params(output: params.output, fasta: params.fasta, fastq: params.fastq)
         sourmashmeta(fasta_input_ch,database_sourmash) }
 /*************  
 * --sourclass | Taxonomic classification via sourmash
 *************/
-    if (params.sourclass && params.fasta) { include 'modules/sourclass' params(output: params.output) 
+    if (params.sourclass && params.fasta) { include './modules/sourclass' params(output: params.output) 
         sourmashclass(fasta_input_ch,database_sourmash) }
 /*************  
 * --sourcluster | Sequence clustering via sourmash 
 *************/
-    if (params.sourcluster && params.fasta) { include 'modules/sourclusterfasta' params(output: params.output) 
+    if (params.sourcluster && params.fasta) { include './modules/sourclusterfasta' params(output: params.output) 
         sourmashclusterfasta(fasta_input_ch) }
-    else if (params.sourcluster && params.dir ) { include 'modules/sourclusterdir' params(output: params.output) 
+    else if (params.sourcluster && params.dir ) { include './modules/sourclusterdir' params(output: params.output) 
         sourmashclusterdir(dir_input_ch) }
 
 /*************  
@@ -213,11 +215,12 @@ if (params.fastqPair ) { fastqPair_input_ch = Channel
 *************/
 
 if (params.dev ) { 
-    include 'modules/dev' params(output: params.output)
+    include './modules/dev' params(output: params.output)
     repeater = ['8', '16', '24', '32', '40', '48']
     databasefile = file("gs://databases-nextflow/databases/thinspace/4centrifuge.tar.gz")
         dev(databasefile, repeater) }
 
+}
 /*************  
 * --help
 *************/
@@ -279,6 +282,6 @@ def helpMSG() {
     -with-timeline time.html timeline (may cause errors)
 
     Profile:
-    -profile                 standard, gcloud [default: standard] ${c_reset}
+    -profile                 standard, gcloud, UKJ [default: standard] ${c_reset}
     """.stripIndent()
 }

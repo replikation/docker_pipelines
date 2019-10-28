@@ -2,9 +2,9 @@ process sourmashclusterdir {
       publishDir "${params.output}/${name}/cluster/", mode: 'copy', pattern: "*.pdf"
       label 'sourmash'
     input:
-      set val(name), file(dir) 
+      tuple val(name), file(dir) 
     output:
-      set val(name), file("*.pdf")
+      tuple val(name), file("*.pdf")
     script:
       """
       cp ${dir}/* .

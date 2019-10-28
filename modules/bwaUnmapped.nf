@@ -2,10 +2,10 @@ process bwaUnmapped {
       publishDir "${params.output}/${name}/", mode: 'copy', pattern: "${name}_non_mappers1_ids.lst"
       label 'bwa' 
     input:
-      set val(name), file(shortreads)
+      tuple val(name), file(shortreads)
       file(assembly) 
     output:
-      set val(name), file("${name}_non_mappers1_ids.lst"), file(shortreads)
+      tuple val(name), file("${name}_non_mappers1_ids.lst"), file(shortreads)
     script:
       """
       bwa index ${assembly}

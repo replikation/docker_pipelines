@@ -2,10 +2,10 @@ process metamaps {
       label 'metamaps'
       publishDir "${params.output}/${name}/metamaps", mode: 'copy', pattern: "classification_results.EM.*"
     input:
-      set val(name), file(fastq) 
+      tuple val(name), file(fastq) 
       file(database) 
     output:
-      set val(name), file ("classification_results.EM.*")
+      tuple val(name), file ("classification_results.EM.*")
     script:
       if (workflow.profile == 'gcloud') {
       """

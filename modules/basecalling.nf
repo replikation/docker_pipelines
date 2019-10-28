@@ -5,9 +5,9 @@ process basecalling {
       containerOptions '--gpus all'
       publishDir "${params.output}/${name}/", mode: 'copy', pattern: "fastq_${params.output}"
     input:
-      set val(name), file(dir)
+      tuple val(name), file(dir)
     output:
-      set val(name), file("fastq_${params.output}")
+      tuple val(name), file("fastq_${params.output}")
     script:
       if(params.barcode == '')
       """

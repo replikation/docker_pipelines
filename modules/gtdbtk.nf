@@ -5,10 +5,10 @@ process gtdbtk {
       publishDir "${params.output}/${name}/gtdbtk", mode: 'copy', pattern: "${name}-results"
       label 'gtdbtk'
     input:
-      set val(name), file(dir) 
+      tuple val(name), file(dir) 
       file(database) 
     output:
-      set val(name), file("${name}-results")
+      tuple val(name), file("${name}-results")
     script:
       """
       tar xzf ${database}

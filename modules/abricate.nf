@@ -3,10 +3,10 @@ process abricate {
     label 'abricate'
     //if (workflow.profile == 'standard' && params.fastq) { maxForks 1 }   
   input:
-    set val(name), file(fasta) 
+    tuple val(name), file(fasta) 
     each method
   output:
-	  set val(name), val("${method}"), file("*.tab")
+	  tuple val(name), val("${method}"), file("*.tab")
   script:
     """
   	abricate ${fasta} --nopath --quiet --mincov 85 --db ${method} > ${method}.tab

@@ -5,9 +5,9 @@ process nanoplot {
       publishDir "${params.output}/${name}/readquality/", mode: 'copy', pattern: "*.png"
       publishDir "${params.output}/${name}/readquality/", mode: 'copy', pattern: "*.pdf"
     input:
-      set val(name), file(reads)
+      tuple val(name), file(reads)
     output:
-      set val(name), file("*.html"), file("*.png"), file("*.pdf"), file("${name}_read_quality.txt") 
+      tuple val(name), file("*.html"), file("*.png"), file("*.pdf"), file("${name}_read_quality.txt") 
     script:
       """
       NanoPlot -t ${task.cpus} --fastq ${reads} --title ${name} --color darkslategrey --N50 --plots hex --loglength -f png --store

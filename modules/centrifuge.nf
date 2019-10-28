@@ -3,10 +3,10 @@ process centrifuge {
       publishDir "${params.output}/${name}/centrifuge", mode: 'copy', pattern: "${name}.out"
       label 'centrifuge'
     input:
-      set val(name), file(fastq) 
+      tuple val(name), file(fastq) 
       file(database) 
     output:
-      set val(name), file("${name}.out"), file("${name}_pavian_report_filtered.csv")
+      tuple val(name), file("${name}.out"), file("${name}_pavian_report_filtered.csv")
     shell:
       """
       case "!{database}" in
