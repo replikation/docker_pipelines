@@ -200,7 +200,7 @@ workflow abricate_FASTQ_wf {
             abricateBatch(fastqTofasta(fastq_input_ch.splitFastq(by: 100000, file: true)), method) 
             abricateBatch.out.collectFile(storeDir: "${params.output}/abricate-batch", skip: 1, keepHeader: true)
                 collectResults = abricateBatch.out.collectFile(skip: 1, keepHeader: true).map { file -> tuple(file.baseName, file)}
-            abricatePlot(abricateParser(collectResults)) }
+            abricatePlot(abricateParser(collectResults))
 }
 
 workflow abricate_FASTA_wf {
@@ -224,7 +224,7 @@ workflow metamaps_wf {
 workflow sourmash_WIMP_FASTA_wf {
     get:    fasta_input_ch
             sourmash_DB
-    main:   sourmashmeta(fasta_input_ch,sourmash_DB) }
+    main:   sourmashmeta(fasta_input_ch,sourmash_DB)
 }
 
 workflow sourmash_WIMP_FASTQ_wf {
@@ -243,12 +243,12 @@ workflow dev_build_centrifuge_DB_cloud_wf {
     main:       
     //repeater = ['8', '16', '24', '32', '40', '48']
     databasefile = file("gs://databases-nextflow/databases/thinspace/4centrifuge.tar.gz")
-    dev(databasefile) }
+    dev(databasefile)
 }
 
 workflow sourmash_CLUSTERING_FASTA_wf {
     get:    fasta_input_ch
-    main:   sourmashclusterfasta(fasta_input_ch) }
+    main:   sourmashclusterfasta(fasta_input_ch)
 }
 
 workflow sourmash_CLUSTERING_DIR_wf {
