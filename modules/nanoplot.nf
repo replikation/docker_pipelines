@@ -5,7 +5,7 @@ process nanoplot {
       publishDir "${params.output}/${name}/readquality/", mode: 'copy', pattern: "*.png"
       publishDir "${params.output}/${name}/readquality/", mode: 'copy', pattern: "*.pdf"
     input:
-      tuple val(name), file(reads)
+      tuple val(name), path(reads)
     output:
       tuple val(name), file("*.html"), file("*.png"), file("*.pdf"), file("${name}_read_quality.txt") 
     script:

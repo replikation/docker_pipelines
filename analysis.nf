@@ -38,7 +38,7 @@ if (params.fastq && params.metamaps && params.tax_db == '') {
 if (params.fasta && params.list) { fasta_input_ch = Channel
         .fromPath( params.fasta, checkIfExists: true )
         .splitCsv()
-        .map { row -> ["${row[0]}", file("${row[1]}")] }
+        .map { row -> ["${row[0]}", file("${row[1]}", checkIfExists: true)]  }
         .view() }
 else if (params.fasta) { fasta_input_ch = Channel
         .fromPath( params.fasta, checkIfExists: true)
@@ -49,7 +49,7 @@ else if (params.fasta) { fasta_input_ch = Channel
 if (params.fastq && params.list) { fastq_input_ch = Channel
         .fromPath( params.fastq, checkIfExists: true )
         .splitCsv()
-        .map { row -> ["${row[0]}", file("${row[1]}")] }
+        .map { row -> tuple("${row[0]}", file("${row[1]}", checkIfExists: true))  }
         .view() }
 else if (params.fastq) { fastq_input_ch = Channel
         .fromPath( params.fastq, checkIfExists: true)
@@ -118,7 +118,7 @@ workflow gtdbtk_database_wf {
                     database_gtdbtk = gtdbtk_download_db.out }
     emit: database_gtdbtk
 }
-
+/*
 workflow centrifuge_database_wf {
     main:
         if (params.centrifuge_db) { database_centrifuge = file(params.centrifuge_db) }
@@ -136,6 +136,19 @@ workflow centrifuge_database_wf {
                     database_centrifuge = centrifuge_download_db.out } 
     emit: database_centrifuge
 }
+*/
+workflow centrifuge_database_wf {
+    main:
+        if (params.centrifuge_db) { database_centrifuge = file( params.centrifuge_db ) }
+        else if (!params.cloudProcess) { centrifuge_download_db() ; database_centrifuge = centrifuge_download_db.out}
+        else if (params.cloudProcess) { 
+            centrifuge_preload = file("gs://databases-nextflow/databases/centrifuge/gtdb_r89_54k_centrifuge.tar")
+            //centrifuge_preload = file("gs://databases-nextflow/databases/thinspace_0p1/ex.cf.tar.gz")
+            if (centrifuge_preload.exists()) { database_centrifuge = centrifuge_preload }   
+            else  { centrifuge_download_db()  ; database_centrifuge = centrifuge_download_db.out }
+        }
+    emit: database_centrifuge
+}  
 
 /************************** 
 * MODULES
@@ -263,13 +276,18 @@ workflow sourmash_CLUSTERING_DIR_wf {
 workflow {
     if (params.abricate && params.fasta) { abricate_FASTA_wf(fasta_input_ch) }
     if (params.abricate && params.fastq) { abricate_FASTQ_wf(fastq_input_ch) }
-    if (params.centrifuge && params.fastq) { centrifuge_wf(fastq_input_ch,centrifuge_database_wf()) }
+    if (params.centrifuge && params.fastq) { 
+        get: fastq_input_ch
+        main: centrifuge_wf(fastq_input_ch, centrifuge_database_wf()) 
+    }
     if (params.deepHumanPathogen && params.fastqPair) { deepHumanPathogen_wf(fastqPair_input_ch)}
     if (params.dev ) { dev_build_centrifuge_DB_cloud_wf() }
     if (params.gtdbtk && params.dir) { gtdbtk_wf(dir_input_ch,gtdbtk_database_wf()) }
     if (params.guppygpu && params.dir) { guppy_gpu_wf(dir_input_ch) }
     if (params.metamaps && params.fastq) { metamaps_wf(fastq_input_ch,metamaps_database_wf()) }
-    if (params.nanoplot && params.fastq) { nanoplot_wf(fastq_input_ch) }   
+    if (params.nanoplot && params.fastq) { 
+        get: fastq_input_ch
+        main: nanoplot_wf(fastq_input_ch) }   
     if (params.plasflow && params.fasta) { plasflow_wf(fasta_input_ch) }
     if (params.sourclass && params.fasta) { sourmash_tax_classification_wf(fasta_input_ch, sourmash_database_wf()) }
     if (params.sourcluster && params.dir ) { sourmash_CLUSTERING_DIR_wf(dir_input_ch) }
