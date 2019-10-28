@@ -6,7 +6,11 @@ nextflow.preview.dsl=2
 * Author: christian.jena@gmail.com
 */
 
-// terminal prints for pipeline overview
+/************************** 
+* HELP messages & USER INPUT checks
+**************************/
+if (params.help) { exit 0, helpMSG() }
+
 println " "
 println "\u001B[32mProfile: $workflow.profile\033[0m"
 println " "
@@ -21,8 +25,6 @@ println "\033[2mCPUs to use: $params.cores"
 println "Output dir name: $params.output\u001B[0m"
 println " "}
 
-// helpmessages & user input checks
-if (params.help) { exit 0, helpMSG() }
 if (params.profile) {
     exit 1, "--profile is WRONG use -profile" }
 if (params.fasta == '' &&  params.fastq == '' &&  params.dir == '' && params.fastqPair == '' && !params.dev) {
@@ -31,7 +33,6 @@ if (params.fasta && params.fastq) {
     exit 1, "please us either: [--fasta] or [--fastq]"}   
 if (params.fastq && params.metamaps && params.tax_db == '') {
     exit 1, "taxonomic database location not specified via [--tax_db]"}
-
 
 // fasta input or via csv file
 if (params.fasta && params.list) { fasta_input_ch = Channel
@@ -44,6 +45,7 @@ else if (params.fasta) { fasta_input_ch = Channel
         .map { file -> tuple(file.baseName, file) }
         .view() }
 
+// fastq input or via csv file
 if (params.fastq && params.list) { fastq_input_ch = Channel
         .fromPath( params.fastq, checkIfExists: true )
         .splitCsv()
@@ -54,6 +56,7 @@ else if (params.fastq) { fastq_input_ch = Channel
         .map { file -> tuple(file.baseName, file) }
         .view() }
 
+// dir input or via csv file
 if (params.dir && params.list) { dir_input_ch = Channel
         .fromPath( params.dir, checkIfExists: true, type: 'dir' )
         .splitCsv()
@@ -64,163 +67,217 @@ if (params.dir) { dir_input_ch = Channel
         .map { file -> tuple(file.name, file) }
         .view() }
 
+// illumina pairs
 if (params.fastqPair ) { fastqPair_input_ch = Channel
         .fromFilePairs( params.fastqPair , checkIfExists: true )
         .view() }
 
-workflow {
+
 /************************** 
 * DATABASES
 **************************/
-// sourmash
-    if (params.sour_db) { database_sourmash = file(params.sour_db) }
+workflow sourmash_database_wf {
+    main:
+        if (params.sour_db) { database_sourmash = file(params.sour_db) }
 
-    else if (workflow.profile == 'gcloud' && (params.sourmeta || params.sourclass)) {
-            sour_db_preload = file("gs://databases-nextflow/databases/sourmash/genbank-k31.lca.json")    
-        if (sour_db_preload.exists()) { database_sourmash = sour_db_preload }
-        else {  include './modules/sourmashgetdatabase'
-                sourmash_download_db() 
-                database_sourmash = sourmash_download_db.out } }
+        else if (workflow.profile == 'gcloud' && (params.sourmeta || params.sourclass)) {
+                sour_db_preload = file("gs://databases-nextflow/databases/sourmash/genbank-k31.lca.json")    
+            if (sour_db_preload.exists()) { database_sourmash = sour_db_preload }
+            else {  include './modules/sourmashgetdatabase'
+                    sourmash_download_db() 
+                    database_sourmash = sourmash_download_db.out } }
 
-    else if (params.sourmeta || params.sourclass) {
-                include './modules/sourmashgetdatabase'
-                sourmash_download_db() 
-                database_sourmash = sourmash_download_db.out }
+        else if (params.sourmeta || params.sourclass) {
+                    include './modules/sourmashgetdatabase'
+                    sourmash_download_db() 
+                    database_sourmash = sourmash_download_db.out }
+    emit: database_sourmash
+}
 
-// metamaps
-    if (params.tax_db) {
-    database_metamaps = file(params.tax_db, checkIfExists: true, type: 'dir') }
+workflow metamaps_database_wf {
+    main:
+        if (params.tax_db) {
+        database_metamaps = file(params.tax_db, checkIfExists: true, type: 'dir') }
+    emit: database_metamaps
+}
 
-// gtdbtk
-    if (params.gtdbtk_db) { database_gtdbtk = file(params.gtdbtk_db) }
+workflow gtdbtk_database_wf {
+    main:
+        if (params.gtdbtk_db) { database_gtdbtk = file(params.gtdbtk_db) }
 
-    else if (workflow.profile == 'gcloud' && params.gtdbtk) {
-            gtdbtk_preload = file("gs://databases-nextflow/databases/gtdbtk/gtdbtk_r89_data.tar.gz")    
-        if (gtdbtk_preload.exists()) { database_gtdbtk = gtdbtk_preload }
-        else {  include './modules/gtdbtkgetdatabase'
-                gtdbtk_download_db() 
-                database_gtdbtk = gtdbtk_download_db.out } }
+        else if (workflow.profile == 'gcloud' && params.gtdbtk) {
+                gtdbtk_preload = file("gs://databases-nextflow/databases/gtdbtk/gtdbtk_r89_data.tar.gz")    
+            if (gtdbtk_preload.exists()) { database_gtdbtk = gtdbtk_preload }
+            else {  include './modules/gtdbtkgetdatabase'
+                    gtdbtk_download_db() 
+                    database_gtdbtk = gtdbtk_download_db.out } }
 
-    else if (params.gtdbtk) {
-                include './modules/gtdbtkgetdatabase'
-                gtdbtk_download_db() 
-                database_gtdbtk = gtdbtk_download_db.out }
+        else if (params.gtdbtk) {
+                    include './modules/gtdbtkgetdatabase'
+                    gtdbtk_download_db() 
+                    database_gtdbtk = gtdbtk_download_db.out }
+    emit: database_gtdbtk
+}
 
-// centrifuge
-    if (params.centrifuge_db) { database_centrifuge = file(params.centrifuge_db) }
+workflow centrifuge_database_wf {
+    main:
+        if (params.centrifuge_db) { database_centrifuge = file(params.centrifuge_db) }
 
-    else if (workflow.profile == 'gcloud' && params.centrifuge) {
-            centrifuge_preload = file("gs://databases-nextflow/databases/centrifuge/gtdb_r89_54k_centrifuge.tar")    
-        if (centrifuge_preload.exists()) { database_centrifuge = centrifuge_preload }
-        else {  include './modules/centrifugegetdatabase'
-                centrifuge_download_db() 
-                database_centrifuge = centrifuge_download_db.out } }
+        else if (workflow.profile == 'gcloud' && params.centrifuge) {
+                centrifuge_preload = file("gs://databases-nextflow/databases/centrifuge/gtdb_r89_54k_centrifuge.tar")    
+            if (centrifuge_preload.exists()) { database_centrifuge = centrifuge_preload }
+            else {  include './modules/centrifugegetdatabase'
+                    centrifuge_download_db() 
+                    database_centrifuge = centrifuge_download_db.out } }
 
-    else if (params.centrifuge) {
-                include './modules/centrifugegetdatabase'
-                centrifuge_download_db() 
-                database_centrifuge = centrifuge_download_db.out } 
+        else if (params.centrifuge) {
+                    include './modules/centrifugegetdatabase'
+                    centrifuge_download_db() 
+                    database_centrifuge = centrifuge_download_db.out } 
+    emit: database_centrifuge
+}
 
 /************************** 
 * MODULES
 **************************/
-/*************  
-* --abricate | resistance screening
-*************/
-    if (params.abricate && params.fasta) { 
-        include './modules/PARSER/abricateParserFASTA' params(output: params.output)
-        include './modules/PLOTS/abricatePlotFASTA' params(output: params.output)
-        include './modules/abricate' params(output: params.output)
-        method = ['argannot', 'card', 'ncbi', 'plasmidfinder', 'resfinder']
-        abricatePlotFASTA(abricateParserFASTA(abricate(fasta_input_ch, method))) }
-
-    if (params.abricate && params.fastq) { 
-        include './modules/abricateBatch'
-        include './modules/PARSER/abricateParser' params(output: params.output)
-        include './modules/PLOTS/abricatePlot' params(output: params.output)
-        include './modules/fastqTofasta' params(output: params.output)
-        method = ['ncbi', 'plasmidfinder']
-        //split fastq batches
-        abricateBatch(fastqTofasta(fastq_input_ch.splitFastq(by: 100000, file: true)), method) 
-            abricateBatch.out.collectFile(storeDir: "${params.output}/abricate-batch", skip: 1, keepHeader: true)
-            newChannel = abricateBatch.out.collectFile(skip: 1, keepHeader: true).map { file -> tuple(file.baseName, file)}
-        abricatePlot(abricateParser(newChannel)) }
-
-/*************  
-* --centrifuge | tax classification of fastq
-*************/
-    if (params.centrifuge && params.fastq) { include './modules/centrifuge' params(output: params.output) 
-        centrifuge(fastq_input_ch,database_centrifuge) }
-/*************  
-* --deepHumanPathogen | Deepsequencing of Human pathogens 
-*************/
-    if (params.deepHumanPathogen && params.fastqPair) { 
-            include './modules/downloadHuman' params(output: params.output) 
-            include './modules/bwaUnmapped' params(output: params.output) 
-            include './modules/removeViaMapping' params(output: params.output) 
-        removeViaMapping(bwaUnmapped(fastqPair_input_ch,downloadHuman())) }
-/*************  
-* --gtdbtk | tax classification of fastas
-*************/
-    if (params.gtdbtk && params.dir) { include './modules/gtdbtk' params(output: params.output) 
-        gtdbtk(dir_input_ch,database_gtdbtk) }
-/*************  
-* --guppy-gpu | basecalling via guppy
-*************/
-    if (params.guppygpu && params.dir) { include './modules/basecalling' params(output: params.output, flowcell: params.flowcell, barcode: params.barcode, kit: params.kit ) 
-        basecalling(dir_input_ch) }
-/*************  
-* --metamaps | taxonomic read classification
-*************/
-    if (params.metamaps && params.fastq && params.tax_db) { 
-        include './modules/metamaps' params(output: params.output, memory: params.memory) 
-        include './modules/krona' params(output: params.output)
-        krona(metamaps(fastq_input_ch, database_metamaps)) }
-/*************  
-* --nanoplot | read quality via nanoplot
-*************/
-    if (params.nanoplot && params.fastq) { include './modules/nanoplot' params(output: params.output) 
-        nanoplot(fastq_input_ch) }
-/*************  
-* --plasflow | plasmidprediction
-*************/
-    if (params.plasflow && params.fasta) { include './modules/plasflow' params(output: params.output) 
-        plasflow(fasta_input_ch) }
-/*************  
-* --sourmeta | Metagenomic classification via sourmash
-*************/
-    if (params.sourmeta && params.fastq) {
-        include './modules/sourmeta' params(output: params.output, fasta: params.fasta, fastq: params.fastq)
-        include './modules/fastqTofasta' params(output: params.output)
-        include './modules/rmetaplot' params(output: params.output)
-        rmetaplot(sourmashmeta(fastqTofasta(fastq_input_ch),database_sourmash)) }
-
-    if (params.sourmeta && params.fasta) { include './modules/sourmeta' params(output: params.output, fasta: params.fasta, fastq: params.fastq)
-        sourmashmeta(fasta_input_ch,database_sourmash) }
-/*************  
-* --sourclass | Taxonomic classification via sourmash
-*************/
-    if (params.sourclass && params.fasta) { include './modules/sourclass' params(output: params.output) 
-        sourmashclass(fasta_input_ch,database_sourmash) }
-/*************  
-* --sourcluster | Sequence clustering via sourmash 
-*************/
-    if (params.sourcluster && params.fasta) { include './modules/sourclusterfasta' params(output: params.output) 
-        sourmashclusterfasta(fasta_input_ch) }
-    else if (params.sourcluster && params.dir ) { include './modules/sourclusterdir' params(output: params.output) 
-        sourmashclusterdir(dir_input_ch) }
-
-/*************  
-* --dev | Quick test and defs modules
-*************/
-
-if (params.dev ) { 
+    include './modules/PARSER/abricateParser' params(output: params.output)
+    include './modules/PARSER/abricateParserFASTA' params(output: params.output)
+    include './modules/PLOTS/abricatePlot' params(output: params.output)
+    include './modules/PLOTS/abricatePlotFASTA' params(output: params.output)
+    include './modules/abricate' params(output: params.output)
+    include './modules/abricateBatch'
+    include './modules/basecalling' params(output: params.output, flowcell: params.flowcell, barcode: params.barcode, kit: params.kit ) 
+    include './modules/bwaUnmapped' params(output: params.output) 
+    include './modules/centrifuge' params(output: params.output) 
     include './modules/dev' params(output: params.output)
-    repeater = ['8', '16', '24', '32', '40', '48']
-    databasefile = file("gs://databases-nextflow/databases/thinspace/4centrifuge.tar.gz")
-        dev(databasefile, repeater) }
+    include './modules/downloadHuman' params(output: params.output) 
+    include './modules/fastqTofasta' params(output: params.output)
+    include './modules/gtdbtk' params(output: params.output) 
+    include './modules/krona' params(output: params.output)
+    include './modules/metamaps' params(output: params.output, memory: params.memory) 
+    include './modules/nanoplot' params(output: params.output) 
+    include './modules/plasflow' params(output: params.output) 
+    include './modules/removeViaMapping' params(output: params.output) 
+    include './modules/rmetaplot' params(output: params.output)
+    include './modules/sourclass' params(output: params.output) 
+    include './modules/sourclusterdir' params(output: params.output) 
+    include './modules/sourclusterfasta' params(output: params.output) 
+    include './modules/sourmeta' params(output: params.output, fasta: params.fasta, fastq: params.fastq)
 
+/************************** 
+* SUB WORKFLOWS
+**************************/
+
+workflow centrifuge_wf {
+    get:    fastq_input_ch
+            centrifuge_DB
+    main:   centrifuge(fastq_input_ch,centrifuge_DB) 
 }
+
+workflow guppy_gpu_wf {
+    get:    dir_input_ch
+    main:   basecalling(dir_input_ch)
+}
+
+workflow deepHumanPathogen_wf {
+    get:    fastqPair_input_ch
+    main:   removeViaMapping(bwaUnmapped(fastqPair_input_ch,downloadHuman()))
+}
+   
+workflow nanoplot_wf {
+    get:    fastq_input_ch
+    main:   nanoplot(fastq_input_ch)
+}
+
+workflow plasflow_wf {
+    get:    fasta_input_ch
+    main:   plasflow(fasta_input_ch)
+}
+
+workflow abricate_FASTQ_wf {
+    get:    fastq_input_ch
+    main:   method = ['ncbi', 'plasmidfinder']
+            abricateBatch(fastqTofasta(fastq_input_ch.splitFastq(by: 100000, file: true)), method) 
+            abricateBatch.out.collectFile(storeDir: "${params.output}/abricate-batch", skip: 1, keepHeader: true)
+                collectResults = abricateBatch.out.collectFile(skip: 1, keepHeader: true).map { file -> tuple(file.baseName, file)}
+            abricatePlot(abricateParser(collectResults)) }
+}
+
+workflow abricate_FASTA_wf {
+    get:    fasta_input_ch
+    main:   method = ['argannot', 'card', 'ncbi', 'plasmidfinder', 'resfinder']
+            abricatePlotFASTA(abricateParserFASTA(abricate(fasta_input_ch, method)))
+}
+
+workflow gtdbtk_wf {
+    get:    dir_input_ch
+            gtdbtk_DB
+    main:   gtdbtk(dir_input_ch,gtdbtk_DB)
+}
+
+workflow metamaps_wf {
+    get:    fastq_input_ch
+            metamaps_DB
+    main:   krona(metamaps(fastq_input_ch, metamaps_DB))
+}
+
+workflow sourmash_WIMP_FASTA_wf {
+    get:    fasta_input_ch
+            sourmash_DB
+    main:   sourmashmeta(fasta_input_ch,sourmash_DB) }
+}
+
+workflow sourmash_WIMP_FASTQ_wf {
+    get:    fastq_input_ch
+            sourmash_DB
+    main:   rmetaplot(sourmashmeta(fastqTofasta(fastq_input_ch),sourmash_DB))
+}
+
+workflow sourmash_tax_classification_wf {
+    get:    fasta_input_ch
+            sourmash_DB
+    main:   sourmashclass(fasta_input_ch,sourmash_DB)
+}
+
+workflow dev_build_centrifuge_DB_cloud_wf {
+    main:       
+    //repeater = ['8', '16', '24', '32', '40', '48']
+    databasefile = file("gs://databases-nextflow/databases/thinspace/4centrifuge.tar.gz")
+    dev(databasefile) }
+}
+
+workflow sourmash_CLUSTERING_FASTA_wf {
+    get:    fasta_input_ch
+    main:   sourmashclusterfasta(fasta_input_ch) }
+}
+
+workflow sourmash_CLUSTERING_DIR_wf {
+    get:    fastq_input_ch
+    main:   sourmashclusterdir(dir_input_ch)
+}
+
+/************************** 
+* MAIN WORKFLOW
+**************************/
+
+workflow {
+    if (params.abricate && params.fasta) { abricate_FASTA_wf(fasta_input_ch) }
+    if (params.abricate && params.fastq) { abricate_FASTQ_wf(fastq_input_ch) }
+    if (params.centrifuge && params.fastq) { centrifuge_wf(fastq_input_ch,centrifuge_database_wf()) }
+    if (params.deepHumanPathogen && params.fastqPair) { deepHumanPathogen_wf(fastqPair_input_ch)}
+    if (params.dev ) { dev_build_centrifuge_DB_cloud_wf() }
+    if (params.gtdbtk && params.dir) { gtdbtk_wf(dir_input_ch,gtdbtk_database_wf()) }
+    if (params.guppygpu && params.dir) { guppy_gpu_wf(dir_input_ch) }
+    if (params.metamaps && params.fastq) { metamaps_wf(fastq_input_ch,metamaps_database_wf()) }
+    if (params.nanoplot && params.fastq) { nanoplot_wf(fastq_input_ch) }   
+    if (params.plasflow && params.fasta) { plasflow_wf(fasta_input_ch) }
+    if (params.sourclass && params.fasta) { sourmash_tax_classification_wf(fasta_input_ch, sourmash_database_wf()) }
+    if (params.sourcluster && params.dir ) { sourmash_CLUSTERING_DIR_wf(dir_input_ch) }
+    if (params.sourcluster && params.fasta) { sourmash_CLUSTERING_FASTA_wf(fasta_input_ch) }
+    if (params.sourmeta && params.fasta) { sourmash_WIMP_FASTA_wf(fasta_input_ch, sourmash_database_wf()) }
+    if (params.sourmeta && params.fastq) { sourmash_WIMP_FASTQ_wf(fastq_input_ch, sourmash_database_wf()) }
+}
+
 /*************  
 * --help
 *************/
