@@ -27,7 +27,7 @@ println " "}
 
 if (params.profile) {
     exit 1, "--profile is WRONG use -profile" }
-if (params.fasta == '' &&  params.fastq == '' &&  params.dir == '' && params.fastqPair == '' && !params.dev) {
+if (!params.fasta &&  !params.fastq &&  !params.dir && !params.fastqPair && !params.dev) {
     exit 1, "input missing, use [--fasta] [--fastq] or [--dir]"}
 if (params.fasta && params.fastq) {
     exit 1, "please us either: [--fasta] or [--fastq]"}   
@@ -62,13 +62,18 @@ if (params.dir && params.list) { dir_input_ch = Channel
         .splitCsv()
         .map { row -> ["${row[0]}", file("${row[1]}")] }
         .view() }
-if (params.dir) { dir_input_ch = Channel
+else if (params.dir) { dir_input_ch = Channel
         .fromPath( params.dir, checkIfExists: true, type: 'dir')
         .map { file -> tuple(file.name, file) }
         .view() }
 
-// illumina pairs
-if (params.fastqPair ) { fastqPair_input_ch = Channel
+// illumina reads input & --list support
+if (params.fastqPair && params.list) { fastqPair_input_ch = Channel
+        .fromPath( params.fastqPair, checkIfExists: true )
+        .splitCsv()
+        .map { row -> ["${row[0]}", [file("${row[1]}", checkIfExists: true), file("${row[2]}", checkIfExists: true)]] }
+        .view() }
+else if (params.fastqPair) { fastqPair_input_ch = Channel
         .fromFilePairs( params.fastqPair , checkIfExists: true )
         .view() }
 
@@ -162,6 +167,7 @@ workflow centrifuge_database_wf {
     include './modules/basecalling' params(output: params.output, flowcell: params.flowcell, barcode: params.barcode, kit: params.kit ) 
     include './modules/bwaUnmapped' params(output: params.output) 
     include './modules/centrifuge' params(output: params.output) 
+    include './modules/centrifuge_illumina' params(output: params.output) 
     include './modules/dev' params(output: params.output)
     include './modules/downloadHuman' params(output: params.output) 
     include './modules/fastqTofasta' params(output: params.output)
@@ -185,6 +191,12 @@ workflow centrifuge_wf {
     get:    fastq_input_ch
             centrifuge_DB
     main:   centrifuge(fastq_input_ch,centrifuge_DB) 
+}
+
+workflow centrifuge_illumina_wf {
+    get:    fastqPair_input_ch
+            centrifuge_DB
+    main:   centrifuge(fastqPair_input_ch,centrifuge_DB) 
 }
 
 workflow guppy_gpu_wf {
@@ -276,18 +288,14 @@ workflow sourmash_CLUSTERING_DIR_wf {
 workflow {
     if (params.abricate && params.fasta) { abricate_FASTA_wf(fasta_input_ch) }
     if (params.abricate && params.fastq) { abricate_FASTQ_wf(fastq_input_ch) }
-    if (params.centrifuge && params.fastq) { 
-        get: fastq_input_ch
-        main: centrifuge_wf(fastq_input_ch, centrifuge_database_wf()) 
-    }
+    if (params.centrifuge && params.fastq) { centrifuge_wf(fastq_input_ch, centrifuge_database_wf()) }
+    if (params.centrifuge && params.fastqPair) { centrifuge_illumina_wf(fastqPair_input_ch, centrifuge_database_wf()) }
     if (params.deepHumanPathogen && params.fastqPair) { deepHumanPathogen_wf(fastqPair_input_ch)}
     if (params.dev ) { dev_build_centrifuge_DB_cloud_wf() }
     if (params.gtdbtk && params.dir) { gtdbtk_wf(dir_input_ch,gtdbtk_database_wf()) }
     if (params.guppygpu && params.dir) { guppy_gpu_wf(dir_input_ch) }
     if (params.metamaps && params.fastq) { metamaps_wf(fastq_input_ch,metamaps_database_wf()) }
-    if (params.nanoplot && params.fastq) { 
-        get: fastq_input_ch
-        main: nanoplot_wf(fastq_input_ch) }   
+    if (params.nanoplot && params.fastq) { nanoplot_wf(fastq_input_ch) }   
     if (params.plasflow && params.fasta) { plasflow_wf(fasta_input_ch) }
     if (params.sourclass && params.fasta) { sourmash_tax_classification_wf(fasta_input_ch, sourmash_database_wf()) }
     if (params.sourcluster && params.dir ) { sourmash_CLUSTERING_DIR_wf(dir_input_ch) }
@@ -316,12 +324,13 @@ def helpMSG() {
     ${c_yellow}Input:${c_reset}
     ${c_green} --fasta ${c_reset}            '*.fasta'   -> assembly file(s) - uses filename
     ${c_green} --fastq ${c_reset}            '*.fastq'   -> read file(s) in fastq, one sample per file - uses filename
+    ${c_green} --fastqPair ${c_reset}            '*_R{1,2}.fastq.gz'   -> fastq file pairs
     ${c_green} --dir  ${c_reset}             'foobar*/'  -> folder(s) as input - uses dirname
     ${c_dim}  ..change above input to csv:${c_reset} ${c_green}--list ${c_reset}            
 
     ${c_yellow}Workflows:${c_reset}
     ${c_blue} --abricate ${c_reset}          antibiotic and plasmid screening    ${c_green}[--fasta]${c_reset} or ${c_green}[--fastq]${c_reset}
-    ${c_blue} --centrifuge ${c_reset}        metagenomic classification of long reads  ${c_green} [--fastq]${c_reset}
+    ${c_blue} --centrifuge ${c_reset}        metagenomic classification of reads  ${c_green} [--fastq] or [--fastqPair]${c_reset}
     ${c_dim}  ..option flags:            [--centrifuge_db] path to your own DB instead, either .tar or .tar.gz ${c_reset}
     ${c_blue} --deepHumanPathogen ${c_reset} pathogen identification in human  ${c_green} [--fastqPair '*_R{1,2}.fastq.gz']${c_reset}
     ${c_blue} --gtdbtk ${c_reset}            tax. class. via marker genes        ${c_green}[--dir]${c_reset}
