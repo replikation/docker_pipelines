@@ -123,25 +123,7 @@ workflow gtdbtk_database_wf {
                     database_gtdbtk = gtdbtk_download_db.out }
     emit: database_gtdbtk
 }
-/*
-workflow centrifuge_database_wf {
-    main:
-        if (params.centrifuge_db) { database_centrifuge = file(params.centrifuge_db) }
 
-        else if (workflow.profile == 'gcloud' && params.centrifuge) {
-                centrifuge_preload = file("gs://databases-nextflow/databases/centrifuge/gtdb_r89_54k_centrifuge.tar")    
-            if (centrifuge_preload.exists()) { database_centrifuge = centrifuge_preload }
-            else {  include './modules/centrifugegetdatabase'
-                    centrifuge_download_db() 
-                    database_centrifuge = centrifuge_download_db.out } }
-
-        else if (params.centrifuge) {
-                    include './modules/centrifugegetdatabase'
-                    centrifuge_download_db() 
-                    database_centrifuge = centrifuge_download_db.out } 
-    emit: database_centrifuge
-}
-*/
 workflow centrifuge_database_wf {
     main:
         if (params.centrifuge_db) { database_centrifuge = file( params.centrifuge_db ) }
@@ -196,7 +178,7 @@ workflow centrifuge_wf {
 workflow centrifuge_illumina_wf {
     get:    fastqPair_input_ch
             centrifuge_DB
-    main:   centrifuge(fastqPair_input_ch,centrifuge_DB) 
+    main:   centrifuge_illumina(fastqPair_input_ch,centrifuge_DB) 
 }
 
 workflow guppy_gpu_wf {
