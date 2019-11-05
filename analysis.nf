@@ -263,6 +263,31 @@ workflow sourmash_CLUSTERING_DIR_wf {
     main:   sourmashclusterdir(dir_input_ch)
 }
 
+/*
+recentrifuge module:
+
+workflow recentrifuge()
+{
+  output="recentrifuge_${label}"
+  mkdir -p $output
+  echo -e "Searching for *.out files in ${YEL}${infolder_path}${NC} ..."
+    test_files=$(ls -1 ${infolder_path}/*.out 2> /dev/null)
+    if [ -z "${test_files}" ]; then echo -e "  Can't find .out files in ${YEL}${infolder_path}${NC}, exiting"; exit 1; fi
+    # adjusting command for more than 1 file
+      filenames=$(find ${infolder_path}/*.out -type f -print0  | xargs -0 -n 1 basename)
+      input_for_docker="${filenames//$'\n'/ -f /input/}"
+      input_for_docker='-f /input/'${input_for_docker}
+      Num_of_samples=$(echo "$filenames" | wc -l)
+  echo -e "Found ${YEL}${Num_of_samples}${NC} file(s)"
+  docker run --user $(id -u):$(id -g) --rm -it \
+    -v ${infolder_path}:/input \
+    -v $WORKDIRPATH/${output}:/output \
+    replikation/recentrifuge \
+    -n /database/ncbi_node $input_for_docker -o /output/${Num_of_samples}_samples_overview.html
+}
+
+*/
+
 /************************** 
 * MAIN WORKFLOW
 **************************/
