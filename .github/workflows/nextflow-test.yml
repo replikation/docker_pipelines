@@ -1,0 +1,13 @@
+name: CI
+
+on: [push]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v1
+    - name: tests the help
+      run: curl -s https://get.nextflow.io | bash && ./nextflow run analysis.nf --help
