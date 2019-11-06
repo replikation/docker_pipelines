@@ -1,13 +1,14 @@
-name: CI
+name: Syntax_check
 
 on: [push]
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
-
     steps:
     - uses: actions/checkout@v1
-    - name: tests the help
+    - name: Help_test
       run: curl -s https://get.nextflow.io | bash && ./nextflow run analysis.nf --help
+    - name: Create failing Issue
+  error_issue:    
+    needs: [Help_test]

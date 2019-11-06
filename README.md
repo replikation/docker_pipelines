@@ -4,6 +4,8 @@
 ![](https://img.shields.io/badge/uses-docker-blue.svg)
 ![](https://img.shields.io/badge/licence-GPL--3.0-lightgrey.svg)
 
+![](https://github.com/replikation/docker_pipelines/workflows/Syntax_check/badge.svg)
+
 ## Overview
 
 * This is a pipeline overview containing various tools in an easy install free nextflow environment
