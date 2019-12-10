@@ -1,10 +1,11 @@
 process abricatePlotFASTA {
     publishDir "${params.output}/${name}/ABR-Screening", mode: 'copy', pattern: "*.pdf"
     label 'ggplot2'
+    errorStrategy { task.exitStatus in 1..1 ? 'ignore' : 'terminate'}
   input:
-    set val(name), val(method), file(results) 
+    tuple val(name), val(method), file(results) 
   output:
-	  set val(name), val(method), file("*.pdf") 
+	  tuple val(name), val(method), file("*.pdf") optional true
   script:
     """
     #!/usr/bin/Rscript

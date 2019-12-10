@@ -2,9 +2,9 @@ process abricateParser {
     //publishDir "${params.output}/${name}/ABR-Screening", mode: 'copy', pattern: "*.csv"
     label 'ubuntu'   
   input:
-    set val(name), file(results) 
+    tuple val(name), file(results) 
   output:
-	  set val(name), file("*.csv") 
+	  tuple val(name), file("*.csv") 
   shell:
     """
     printf "amount;type;group\\n" > !{name}_ncbi.csv
