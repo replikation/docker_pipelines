@@ -58,9 +58,9 @@ else if (params.fastq) { fastq_input_ch = Channel
 
 // dir input or via csv file
 if (params.dir && params.list) { dir_input_ch = Channel
-        .fromPath( params.dir, checkIfExists: true, type: 'dir' )
+        .fromPath( params.dir, checkIfExists: true )
         .splitCsv()
-        .map { row -> ["${row[0]}", file("${row[1]}")] }
+        .map { row -> ["${row[0]}", file("${row[1]}", checkIfExists: true , type: 'dir')] }
         .view() }
 else if (params.dir) { dir_input_ch = Channel
         .fromPath( params.dir, checkIfExists: true, type: 'dir')
