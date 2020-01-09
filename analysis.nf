@@ -165,6 +165,7 @@ workflow centrifuge_database_wf {
     include './modules/sourclusterfasta' params(output: params.output) 
     include './modules/sourmeta' params(output: params.output, fasta: params.fasta, fastq: params.fastq)
 
+    include './modules/PLOTS/sourclusterPlot' params(output: params.output) 
 /************************** 
 * SUB WORKFLOWS
 **************************/
@@ -261,6 +262,7 @@ workflow sourmash_CLUSTERING_FASTA_wf {
 workflow sourmash_CLUSTERING_DIR_wf {
     get:    fastq_input_ch
     main:   sourmashclusterdir(dir_input_ch)
+            sourclusterPlot(sourmashclusterdir.out[1])
 }
 
 /*
