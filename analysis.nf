@@ -146,7 +146,7 @@ workflow centrifuge_database_wf {
     include './modules/PLOTS/abricatePlotFASTA' params(output: params.output)
     include './modules/abricate' params(output: params.output)
     include './modules/abricateBatch'
-    include './modules/basecalling' params(output: params.output, flowcell: params.flowcell, barcode: params.barcode, kit: params.kit ) 
+    include './modules/guppy_gpu' params(output: params.output, flowcell: params.flowcell, barcode: params.barcode, kit: params.kit, configtype: params.configtype, config: params.config) 
     include './modules/bwaUnmapped' params(output: params.output) 
     include './modules/centrifuge' params(output: params.output) 
     include './modules/centrifuge_illumina' params(output: params.output) 
@@ -183,7 +183,7 @@ workflow centrifuge_illumina_wf {
 
 workflow guppy_gpu_wf {
     get:    dir_input_ch
-    main:   basecalling(dir_input_ch)
+    main:   guppy_gpu(dir_input_ch)
 }
 
 workflow deepHumanPathogen_wf {
@@ -337,24 +337,27 @@ def helpMSG() {
 
     ${c_yellow}Workflows:${c_reset}
     ${c_blue} --abricate ${c_reset}          antibiotic and plasmid screening    ${c_green}[--fasta]${c_reset} or ${c_green}[--fastq]${c_reset}
-    ${c_blue} --centrifuge ${c_reset}        metagenomic classification of reads  ${c_green} [--fastq] or [--fastqPair]${c_reset}
+    ${c_blue} --centrifuge ${c_reset}        metagenomic classification of reads${c_green} [--fastq]${c_reset} or ${c_green}[--fastqPair]${c_reset}
     ${c_dim}  ..option flags:            [--centrifuge_db] path to your own DB instead, either .tar or .tar.gz ${c_reset}
-    ${c_blue} --deepHumanPathogen ${c_reset} pathogen identification in human  ${c_green} [--fastqPair '*_R{1,2}.fastq.gz']${c_reset}
+    ${c_blue} --deepHumanPathogen ${c_reset} pathogen identification in human  ${c_green}  [--fastqPair '*_R{1,2}.fastq.gz']${c_reset}
     ${c_blue} --gtdbtk ${c_reset}            tax. class. via marker genes        ${c_green}[--dir]${c_reset}
     ${c_dim}  ..option flags:            [--gtdbtk_db] path to your own DB instead ${c_reset}
+    ${c_blue} --guppygpu ${c_reset}          basecalling via guppy-gpu-nvidia   ${c_green} [--dir]${c_reset}
+    ${c_dim}  ..option flags:            [--flowcell] [--kit] [--barcode] [--modbase]
+      ..default settings:        [--flowcell $params.flowcell] [--kit $params.kit] [--modbase FALSE] ${c_reset}
+    ${c_dim}  ..config files:            turn on via [--config], modify config type via [--configtype] 
+      ..default config type:     [--configtype $params.configtype]  ${c_reset}
+    ${c_blue} --metamaps ${c_reset}          metagenomic class. of long reads   ${c_green} [--fastq]${c_reset}
+    ${c_dim}  ..mandatory flags:         [--memory] [--tax_db] e.g. --memory 100 --tax_db /databases/miniSeq+H 
+    ${c_blue} --nanoplot  ${c_reset}         read quality via nanoplot           ${c_green}[--fastq]${c_reset}
+    ${c_blue} --plasflow ${c_reset}          predicts & seperates plasmid-seqs${c_green}   [--fasta]${c_reset}
     ${c_blue} --sourmeta ${c_reset}          metagenomic analysis "WIMP"         ${c_green}[--fasta]${c_reset} or ${c_green}[--fastq]${c_reset}
     ${c_dim}  ..option flags:            [--sour_db] path to your own DB instead ${c_reset}
     ${c_blue} --sourclass ${c_reset}         taxonomic classification            ${c_green}[--fasta]  ${c_reset}
     ${c_dim}  ..option flags:            [--sour_db] path to your own DB instead ${c_reset}
     ${c_blue} --sourcluster ${c_reset}       sequence comparision with kmers     ${c_green}[--fasta]${c_reset} or ${c_green}[--dir]${c_reset}
-    ${c_dim}  ..inputs:                  multi-fasta: --fasta; multiple files: --dir${c_reset}
-    ${c_blue} --nanoplot  ${c_reset}         read quality via nanoplot           ${c_green}[--fastq]${c_reset}
-    ${c_blue} --guppygpu ${c_reset}          basecalling via guppy-gpu-nvidia   ${c_green} [--dir]${c_reset}
-    ${c_dim}  ..option flags:            [--flowcell] [--kit] [--barcode]
-      ..default settings:        [--flowcell $params.flowcell] [--kit $params.kit] ${c_reset}
-    ${c_blue} --plasflow ${c_reset}          predicts & seperates plasmid-seqs${c_green}   [--fasta]${c_reset}
-    ${c_blue} --metamaps ${c_reset}          metagenomic classification of long reads  ${c_green} [--fastq]${c_reset}
-    ${c_dim}  ..mandatory flags:         [--memory] [--tax_db] e.g. --memory 100 --tax_db /databases/miniSeq+H 
+    ${c_dim}  ..inputs:                  cluster contigs: [--fasta]; cluster fastas: [--dir]${c_reset}
+
 
     ${c_yellow}Options:${c_reset}
     --cores             max cores for local use [default: $params.cores]
