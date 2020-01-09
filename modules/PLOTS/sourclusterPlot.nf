@@ -10,11 +10,6 @@ process sourclusterPlot {
     """
     #!/usr/bin/env python
 
-    '''
-    python clustervis.py -d results.csv -o clusters.html
-    '''
-
-    #import argparse
     from collections import defaultdict
 
     import numpy as np
@@ -23,13 +18,6 @@ process sourclusterPlot {
     from bokeh.plotting import figure, show, save, output_file
     from bokeh.sampledata.les_mis import data
 
-
-    #parser = argparse.ArgumentParser(description='Process some integers.')
-    #parser.add_argument('-d', help='Distance matrix from sourmash')
-    #parser.add_argument('-o', help='File to save the plot to')
-    #args = parser.parse_args()
-
-    # file here
     with open("${results}", 'r') as file: 
         header = next(file).strip().split(',')
         D = []  # distance matrix
@@ -37,16 +25,10 @@ process sourclusterPlot {
             values = [float(x) for x in next(file).strip().split(',')]
             D.append(values)
 
-
-
     D_ = np.array(D)
     Y = sch.linkage(D_, method='single')
-
-
-
     Z = sch.dendrogram(Y, orientation='right')
     ix = Z['leaves']
-
 
     D_ = D_[ix, :]
     D_ = D_[:, ix]
@@ -66,16 +48,14 @@ process sourclusterPlot {
         alphas=alpha,
         )
 
-
     p = figure(title='Clustered Jaccard distance (sourmash)',
               x_axis_location='above', tools='hover,save',
               x_range=list(reversed(header_sorted)), y_range=header_sorted,
               tooltips = [('names', '@yname, @xname'), ('distance', '@alphas')]
               )
 
-
-    p.plot_width = 1400
-    p.plot_height = 1400
+    p.plot_width = ${params.size}
+    p.plot_height = ${params.size}
     p.grid.grid_line_color = None
     p.axis.axis_line_color = None
     p.axis.major_tick_line_color = None
@@ -117,4 +97,9 @@ process sourclusterPlot {
     
     # colormap = ['#444444', '#a6cee3', '#1f78b4', '#b2df8a', '#33a02c', '#fb9a99',
     #             '#e31a1c', '#fdbf6f', '#ff7f00', '#cab2d6', '#6a3d9a']
+
+        #parser = argparse.ArgumentParser(description='Process some integers.')
+    #parser.add_argument('-d', help='Distance matrix from sourmash')
+    #parser.add_argument('-o', help='File to save the plot to')
+    #args = parser.parse_args()
 */

@@ -164,8 +164,7 @@ workflow centrifuge_database_wf {
     include './modules/sourclusterdir' params(output: params.output) 
     include './modules/sourclusterfasta' params(output: params.output) 
     include './modules/sourmeta' params(output: params.output, fasta: params.fasta, fastq: params.fastq)
-
-    include './modules/PLOTS/sourclusterPlot' params(output: params.output) 
+    include './modules/PLOTS/sourclusterPlot' params(output: params.output, size: params.size) 
 /************************** 
 * SUB WORKFLOWS
 **************************/
@@ -359,6 +358,7 @@ def helpMSG() {
     ${c_dim}  ..option flags:            [--sour_db] path to your own DB instead ${c_reset}
     ${c_blue} --sourcluster ${c_reset}       sequence comparision with kmers     ${c_green}[--fasta]${c_reset} or ${c_green}[--dir]${c_reset}
     ${c_dim}  ..inputs:                  cluster contigs: [--fasta]; cluster fastas: [--dir]${c_reset}
+    ${c_dim}  ..option flags:            [--size] figure size; default [--size $params.size]${c_reset}
 
 
     ${c_yellow}Options:${c_reset}
