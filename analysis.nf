@@ -86,7 +86,7 @@ workflow sourmash_database_wf {
         if (params.sour_db) { database_sourmash = file(params.sour_db) }
 
         else if (workflow.profile == 'gcloud' && (params.sourmeta || params.sourclass)) {
-                sour_db_preload = file("gs://databases-nextflow/databases/sourmash/genbank-k31.lca.json")    
+                sour_db_preload = file("gs://databases-nextflow/databases/sourmash/gtdb.lca.json")    
             if (sour_db_preload.exists()) { database_sourmash = sour_db_preload }
             else {  include './modules/sourmashgetdatabase'
                     sourmash_download_db() 
