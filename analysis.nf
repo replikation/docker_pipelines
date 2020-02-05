@@ -130,12 +130,11 @@ workflow centrifuge_database_wf {
         else if (!params.cloudProcess) { centrifuge_download_db() ; database_centrifuge = centrifuge_download_db.out}
         else if (params.cloudProcess) { 
             centrifuge_preload = file("gs://databases-nextflow/databases/centrifuge/gtdb_r89_54k_centrifuge.tar")
-            //centrifuge_preload = file("gs://databases-nextflow/databases/thinspace_0p1/ex.cf.tar.gz")
             if (centrifuge_preload.exists()) { database_centrifuge = centrifuge_preload }   
             else  { centrifuge_download_db()  ; database_centrifuge = centrifuge_download_db.out }
         }
     emit: database_centrifuge
-}  
+} 
 
 /************************** 
 * MODULES
@@ -148,6 +147,7 @@ workflow centrifuge_database_wf {
     include './modules/abricateBatch'
     include './modules/guppy_gpu' params(output: params.output, flowcell: params.flowcell, barcode: params.barcode, kit: params.kit, configtype: params.configtype, config: params.config) 
     include './modules/bwaUnmapped' params(output: params.output) 
+    include './modules/centrifugegetdatabase' params(cloudProcess: params.cloudProcess, cloudDatabase: params.cloudDatabase)
     include './modules/centrifuge' params(output: params.output) 
     include './modules/centrifuge_illumina' params(output: params.output) 
     include './modules/dev' params(output: params.output)
