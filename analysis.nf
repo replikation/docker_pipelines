@@ -39,22 +39,22 @@ if (params.fasta && params.list) { fasta_input_ch = Channel
         .fromPath( params.fasta, checkIfExists: true )
         .splitCsv()
         .map { row -> ["${row[0]}", file("${row[1]}", checkIfExists: true)]  }
-        .view() }
+        }
 else if (params.fasta) { fasta_input_ch = Channel
         .fromPath( params.fasta, checkIfExists: true)
         .map { file -> tuple(file.baseName, file) }
-        .view() }
+        }
 
 // fastq input or via csv file
 if (params.fastq && params.list) { fastq_input_ch = Channel
         .fromPath( params.fastq, checkIfExists: true )
         .splitCsv()
         .map { row -> tuple("${row[0]}", file("${row[1]}", checkIfExists: true))  }
-        .view() }
+        }
 else if (params.fastq) { fastq_input_ch = Channel
         .fromPath( params.fastq, checkIfExists: true)
         .map { file -> tuple(file.baseName, file) }
-        .view() }
+        }
 
 // dir input or via csv file
 if (params.dir && params.list) { dir_input_ch = Channel
@@ -65,17 +65,17 @@ if (params.dir && params.list) { dir_input_ch = Channel
 else if (params.dir) { dir_input_ch = Channel
         .fromPath( params.dir, checkIfExists: true, type: 'dir')
         .map { file -> tuple(file.name, file) }
-        .view() }
+        }
 
 // illumina reads input & --list support
 if (params.fastqPair && params.list) { fastqPair_input_ch = Channel
         .fromPath( params.fastqPair, checkIfExists: true )
         .splitCsv()
         .map { row -> ["${row[0]}", [file("${row[1]}", checkIfExists: true), file("${row[2]}", checkIfExists: true)]] }
-        .view() }
+        }
 else if (params.fastqPair) { fastqPair_input_ch = Channel
         .fromFilePairs( params.fastqPair , checkIfExists: true )
-        .view() }
+        }
 
 
 /************************** 
@@ -88,12 +88,9 @@ workflow sourmash_database_wf {
         else if (workflow.profile == 'gcloud' && (params.sourmeta || params.sourclass)) {
                 sour_db_preload = file("gs://databases-nextflow/databases/sourmash/gtdb.lca.json")    
             if (sour_db_preload.exists()) { database_sourmash = sour_db_preload }
-            else {  include './modules/sourmashgetdatabase'
-                    sourmash_download_db() 
+            else {  sourmash_download_db() 
                     database_sourmash = sourmash_download_db.out } }
-
         else if (params.sourmeta || params.sourclass) {
-                    include './modules/sourmashgetdatabase'
                     sourmash_download_db() 
                     database_sourmash = sourmash_download_db.out }
     emit: database_sourmash
@@ -109,16 +106,12 @@ workflow metamaps_database_wf {
 workflow gtdbtk_database_wf {
     main:
         if (params.gtdbtk_db) { database_gtdbtk = file(params.gtdbtk_db) }
-
         else if (workflow.profile == 'gcloud' && params.gtdbtk) {
                 gtdbtk_preload = file("gs://databases-nextflow/databases/gtdbtk/gtdbtk_r89_data.tar.gz")    
             if (gtdbtk_preload.exists()) { database_gtdbtk = gtdbtk_preload }
-            else {  include './modules/gtdbtkgetdatabase'
-                    gtdbtk_download_db() 
+            else {  gtdbtk_download_db() 
                     database_gtdbtk = gtdbtk_download_db.out } }
-
-        else if (params.gtdbtk) {
-                    include './modules/gtdbtkgetdatabase'
+        else if (params.gtdbtk) {  
                     gtdbtk_download_db() 
                     database_gtdbtk = gtdbtk_download_db.out }
     emit: database_gtdbtk
@@ -139,6 +132,9 @@ workflow centrifuge_database_wf {
 /************************** 
 * MODULES
 **************************/
+    include gtdbtk_download_db from './modules/gtdbtkgetdatabase'
+    include sourmash_download_db from './modules/sourmashgetdatabase'
+
     include abricateParser from './modules/PARSER/abricateParser' params(output: params.output)
     include abricateParserFASTA from './modules/PARSER/abricateParserFASTA' params(output: params.output)
     include abricatePlot from './modules/PLOTS/abricatePlot' params(output: params.output)
@@ -147,7 +143,7 @@ workflow centrifuge_database_wf {
     include abricateBatch from './modules/abricateBatch'
     include guppy_gpu from './modules/guppy_gpu' params(output: params.output, flowcell: params.flowcell, barcode: params.barcode, kit: params.kit, configtype: params.configtype, config: params.config) 
     include bwaUnmapped from './modules/bwaUnmapped' params(output: params.output) 
-    include centrifugegetdatabase from './modules/centrifugegetdatabase' params(cloudProcess: params.cloudProcess, cloudDatabase: params.cloudDatabase)
+    include centrifuge_download_db from './modules/centrifugegetdatabase' params(cloudProcess: params.cloudProcess, cloudDatabase: params.cloudDatabase)
     include centrifuge from './modules/centrifuge' params(output: params.output) 
     include centrifuge_illumina from './modules/centrifuge_illumina' params(output: params.output) 
     include dev from './modules/dev' params(output: params.output)
@@ -160,10 +156,10 @@ workflow centrifuge_database_wf {
     include plasflow from './modules/plasflow' params(output: params.output) 
     include removeViaMapping from './modules/removeViaMapping' params(output: params.output) 
     include rmetaplot from './modules/rmetaplot' params(output: params.output)
-    include "sourclass" from './modules/sourclass' params(output: params.output) 
-    include sourclusterdir from './modules/sourclusterdir' params(output: params.output) 
-    include sourclusterfasta from './modules/sourclusterfasta' params(output: params.output) 
-    include sourmeta from './modules/sourmeta' params(output: params.output, fasta: params.fasta, fastq: params.fastq)
+    include sourmashclass from './modules/sourclass' params(output: params.output) 
+    include sourmashclusterdir from './modules/sourclusterdir' params(output: params.output) 
+    include sourmashclusterfasta from './modules/sourclusterfasta' params(output: params.output) 
+    include sourmashmeta from './modules/sourmeta' params(output: params.output, fasta: params.fasta, fastq: params.fastq)
     include sourclusterPlot from './modules/PLOTS/sourclusterPlot' params(output: params.output, size: params.size) 
 /************************** 
 * SUB WORKFLOWS
