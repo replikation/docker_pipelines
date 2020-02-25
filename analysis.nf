@@ -139,70 +139,70 @@ workflow centrifuge_database_wf {
 /************************** 
 * MODULES
 **************************/
-    include './modules/PARSER/abricateParser' params(output: params.output)
-    include './modules/PARSER/abricateParserFASTA' params(output: params.output)
-    include './modules/PLOTS/abricatePlot' params(output: params.output)
-    include './modules/PLOTS/abricatePlotFASTA' params(output: params.output)
-    include './modules/abricate' params(output: params.output)
-    include './modules/abricateBatch'
-    include './modules/guppy_gpu' params(output: params.output, flowcell: params.flowcell, barcode: params.barcode, kit: params.kit, configtype: params.configtype, config: params.config) 
-    include './modules/bwaUnmapped' params(output: params.output) 
-    include './modules/centrifugegetdatabase' params(cloudProcess: params.cloudProcess, cloudDatabase: params.cloudDatabase)
-    include './modules/centrifuge' params(output: params.output) 
-    include './modules/centrifuge_illumina' params(output: params.output) 
-    include './modules/dev' params(output: params.output)
-    include './modules/downloadHuman' params(output: params.output) 
-    include './modules/fastqTofasta' params(output: params.output)
-    include './modules/gtdbtk' params(output: params.output) 
-    include './modules/krona' params(output: params.output)
-    include './modules/metamaps' params(output: params.output, memory: params.memory) 
-    include './modules/nanoplot' params(output: params.output) 
-    include './modules/plasflow' params(output: params.output) 
-    include './modules/removeViaMapping' params(output: params.output) 
-    include './modules/rmetaplot' params(output: params.output)
-    include './modules/sourclass' params(output: params.output) 
-    include './modules/sourclusterdir' params(output: params.output) 
-    include './modules/sourclusterfasta' params(output: params.output) 
-    include './modules/sourmeta' params(output: params.output, fasta: params.fasta, fastq: params.fastq)
-    include './modules/PLOTS/sourclusterPlot' params(output: params.output, size: params.size) 
+    include abricateParser from './modules/PARSER/abricateParser' params(output: params.output)
+    include abricateParserFASTA from './modules/PARSER/abricateParserFASTA' params(output: params.output)
+    include abricatePlot from './modules/PLOTS/abricatePlot' params(output: params.output)
+    include abricatePlotFASTA from './modules/PLOTS/abricatePlotFASTA' params(output: params.output)
+    include abricate from './modules/abricate' params(output: params.output)
+    include abricateBatch from './modules/abricateBatch'
+    include guppy_gpu from './modules/guppy_gpu' params(output: params.output, flowcell: params.flowcell, barcode: params.barcode, kit: params.kit, configtype: params.configtype, config: params.config) 
+    include bwaUnmapped from './modules/bwaUnmapped' params(output: params.output) 
+    include centrifugegetdatabase from './modules/centrifugegetdatabase' params(cloudProcess: params.cloudProcess, cloudDatabase: params.cloudDatabase)
+    include centrifuge from './modules/centrifuge' params(output: params.output) 
+    include centrifuge_illumina from './modules/centrifuge_illumina' params(output: params.output) 
+    include dev from './modules/dev' params(output: params.output)
+    include downloadHuman from './modules/downloadHuman' params(output: params.output) 
+    include fastqTofasta from './modules/fastqTofasta' params(output: params.output)
+    include gtdbtk from './modules/gtdbtk' params(output: params.output) 
+    include krona from './modules/krona' params(output: params.output)
+    include metamaps from './modules/metamaps' params(output: params.output, memory: params.memory) 
+    include nanoplot from './modules/nanoplot' params(output: params.output) 
+    include plasflow from './modules/plasflow' params(output: params.output) 
+    include removeViaMapping from './modules/removeViaMapping' params(output: params.output) 
+    include rmetaplot from './modules/rmetaplot' params(output: params.output)
+    include "sourclass" from './modules/sourclass' params(output: params.output) 
+    include sourclusterdir from './modules/sourclusterdir' params(output: params.output) 
+    include sourclusterfasta from './modules/sourclusterfasta' params(output: params.output) 
+    include sourmeta from './modules/sourmeta' params(output: params.output, fasta: params.fasta, fastq: params.fastq)
+    include sourclusterPlot from './modules/PLOTS/sourclusterPlot' params(output: params.output, size: params.size) 
 /************************** 
 * SUB WORKFLOWS
 **************************/
 
 workflow centrifuge_wf {
-    get:    fastq_input_ch
+    take:    fastq_input_ch
             centrifuge_DB
     main:   centrifuge(fastq_input_ch,centrifuge_DB) 
 }
 
 workflow centrifuge_illumina_wf {
-    get:    fastqPair_input_ch
+    take:    fastqPair_input_ch
             centrifuge_DB
     main:   centrifuge_illumina(fastqPair_input_ch,centrifuge_DB) 
 }
 
 workflow guppy_gpu_wf {
-    get:    dir_input_ch
+    take:    dir_input_ch
     main:   guppy_gpu(dir_input_ch)
 }
 
 workflow deepHumanPathogen_wf {
-    get:    fastqPair_input_ch
+    take:    fastqPair_input_ch
     main:   removeViaMapping(bwaUnmapped(fastqPair_input_ch,downloadHuman()))
 }
    
 workflow nanoplot_wf {
-    get:    fastq_input_ch
+    take:    fastq_input_ch
     main:   nanoplot(fastq_input_ch)
 }
 
 workflow plasflow_wf {
-    get:    fasta_input_ch
+    take:    fasta_input_ch
     main:   plasflow(fasta_input_ch)
 }
 
 workflow abricate_FASTQ_wf {
-    get:    fastq_input_ch
+    take:    fastq_input_ch
     main:   method = ['ncbi', 'plasmidfinder']
             abricateBatch(fastqTofasta(fastq_input_ch.splitFastq(by: 100000, file: true)), method) 
             abricateBatch.out.collectFile(storeDir: "${params.output}/abricate-batch", skip: 1, keepHeader: true)
@@ -211,37 +211,37 @@ workflow abricate_FASTQ_wf {
 }
 
 workflow abricate_FASTA_wf {
-    get:    fasta_input_ch
+    take:    fasta_input_ch
     main:   method = ['argannot', 'card', 'ncbi', 'plasmidfinder', 'resfinder']
             abricatePlotFASTA(abricateParserFASTA(abricate(fasta_input_ch, method)))
 }
 
 workflow gtdbtk_wf {
-    get:    dir_input_ch
+    take:    dir_input_ch
             gtdbtk_DB
     main:   gtdbtk(dir_input_ch,gtdbtk_DB)
 }
 
 workflow metamaps_wf {
-    get:    fastq_input_ch
+    take:    fastq_input_ch
             metamaps_DB
     main:   krona(metamaps(fastq_input_ch, metamaps_DB))
 }
 
 workflow sourmash_WIMP_FASTA_wf {
-    get:    fasta_input_ch
+    take:    fasta_input_ch
             sourmash_DB
     main:   sourmashmeta(fasta_input_ch,sourmash_DB)
 }
 
 workflow sourmash_WIMP_FASTQ_wf {
-    get:    fastq_input_ch
+    take:    fastq_input_ch
             sourmash_DB
     main:   rmetaplot(sourmashmeta(fastqTofasta(fastq_input_ch),sourmash_DB))
 }
 
 workflow sourmash_tax_classification_wf {
-    get:    fasta_input_ch
+    take:    fasta_input_ch
             sourmash_DB
     main:   sourmashclass(fasta_input_ch,sourmash_DB)
 }
@@ -254,12 +254,12 @@ workflow dev_build_centrifuge_DB_cloud_wf {
 }
 
 workflow sourmash_CLUSTERING_FASTA_wf {
-    get:    fasta_input_ch
+    take:    fasta_input_ch
     main:   sourmashclusterfasta(fasta_input_ch)
 }
 
 workflow sourmash_CLUSTERING_DIR_wf {
-    get:    fastq_input_ch
+    take:    fastq_input_ch
     main:   sourmashclusterdir(dir_input_ch)
             sourclusterPlot(sourmashclusterdir.out[1])
 }
