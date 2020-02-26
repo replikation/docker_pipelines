@@ -1,4 +1,4 @@
-process sourmashclass {
+process sourmashclassification {
       publishDir "${params.output}/${name}", mode: 'copy', pattern: "taxonomic-classification.txt"
       label 'sourmash'
     input:

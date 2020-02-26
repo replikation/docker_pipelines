@@ -132,35 +132,39 @@ workflow centrifuge_database_wf {
 /************************** 
 * MODULES
 **************************/
-    include gtdbtk_download_db from './modules/gtdbtkgetdatabase'
-    include sourmash_download_db from './modules/sourmashgetdatabase'
-
-    include abricateParser from './modules/PARSER/abricateParser' params(output: params.output)
-    include abricateParserFASTA from './modules/PARSER/abricateParserFASTA' params(output: params.output)
-    include abricatePlot from './modules/PLOTS/abricatePlot' params(output: params.output)
-    include abricatePlotFASTA from './modules/PLOTS/abricatePlotFASTA' params(output: params.output)
-    include abricate from './modules/abricate' params(output: params.output)
+    include abricate from './modules/abricate' 
     include abricateBatch from './modules/abricateBatch'
-    include guppy_gpu from './modules/guppy_gpu' params(output: params.output, flowcell: params.flowcell, barcode: params.barcode, kit: params.kit, configtype: params.configtype, config: params.config) 
-    include bwaUnmapped from './modules/bwaUnmapped' params(output: params.output) 
-    include centrifuge_download_db from './modules/centrifugegetdatabase' params(cloudProcess: params.cloudProcess, cloudDatabase: params.cloudDatabase)
-    include centrifuge from './modules/centrifuge' params(output: params.output) 
-    include centrifuge_illumina from './modules/centrifuge_illumina' params(output: params.output) 
-    include dev from './modules/dev' params(output: params.output)
-    include downloadHuman from './modules/downloadHuman' params(output: params.output) 
-    include fastqTofasta from './modules/fastqTofasta' params(output: params.output)
-    include gtdbtk from './modules/gtdbtk' params(output: params.output) 
-    include krona from './modules/krona' params(output: params.output)
-    include metamaps from './modules/metamaps' params(output: params.output, memory: params.memory) 
-    include nanoplot from './modules/nanoplot' params(output: params.output) 
-    include plasflow from './modules/plasflow' params(output: params.output) 
-    include removeViaMapping from './modules/removeViaMapping' params(output: params.output) 
-    include rmetaplot from './modules/rmetaplot' params(output: params.output)
-    include sourmashclass from './modules/sourclass' params(output: params.output) 
-    include sourmashclusterdir from './modules/sourclusterdir' params(output: params.output) 
-    include sourmashclusterfasta from './modules/sourclusterfasta' params(output: params.output) 
-    include sourmashmeta from './modules/sourmeta' params(output: params.output, fasta: params.fasta, fastq: params.fastq)
-    include sourclusterPlot from './modules/PLOTS/sourclusterPlot' params(output: params.output, size: params.size) 
+    include abricateParser from './modules/PARSER/abricateParser' 
+    include abricateParserFASTA from './modules/PARSER/abricateParserFASTA'
+    include abricatePlot from './modules/PLOTS/abricatePlot'
+    include abricatePlotFASTA from './modules/PLOTS/abricatePlotFASTA' 
+    include bwaUnmapped from './modules/bwaUnmapped' 
+    include centrifuge from './modules/centrifuge' 
+    include centrifuge_download_db from './modules/centrifugegetdatabase' 
+    include centrifuge_illumina from './modules/centrifuge_illumina' 
+    include dev from './modules/dev' 
+    include downloadHuman from './modules/downloadHuman' 
+    include fastqTofasta from './modules/fastqTofasta' 
+    include fasttree from './modules/fasttree'
+    include gtdbtk from './modules/gtdbtk' 
+    include gtdbtk_download_db from './modules/gtdbtkgetdatabase'
+    include guppy_gpu from './modules/guppy_gpu' 
+    include krona from './modules/krona' 
+    include mafft from './modules/mafft'
+    include mafft_supp from './modules/mafft_supp'
+    include metamaps from './modules/metamaps' 
+    include nanoplot from './modules/nanoplot' 
+    include plasflow from './modules/plasflow' 
+    include removeViaMapping from './modules/removeViaMapping' 
+    include rmetaplot from './modules/rmetaplot' 
+    include sourclusterPlot from './modules/PLOTS/sourclusterPlot' 
+    include sourmash_download_db from './modules/sourmashgetdatabase'
+    include sourmashclassification from './modules/sourclass' 
+    include sourmashclusterdir from './modules/sourclusterdir' 
+    include sourmashclusterfasta from './modules/sourclusterfasta' 
+    include sourmashmeta from './modules/sourmeta' 
+    include toytree from './modules/toytree' 
+
 /************************** 
 * SUB WORKFLOWS
 **************************/
@@ -207,19 +211,19 @@ workflow abricate_FASTQ_wf {
 }
 
 workflow abricate_FASTA_wf {
-    take:    fasta_input_ch
+    take:   fasta_input_ch
     main:   method = ['argannot', 'card', 'ncbi', 'plasmidfinder', 'resfinder']
             abricatePlotFASTA(abricateParserFASTA(abricate(fasta_input_ch, method)))
 }
 
 workflow gtdbtk_wf {
-    take:    dir_input_ch
+    take:   dir_input_ch
             gtdbtk_DB
     main:   gtdbtk(dir_input_ch,gtdbtk_DB)
 }
 
 workflow metamaps_wf {
-    take:    fastq_input_ch
+    take:   fastq_input_ch
             metamaps_DB
     main:   krona(metamaps(fastq_input_ch, metamaps_DB))
 }
@@ -231,15 +235,15 @@ workflow sourmash_WIMP_FASTA_wf {
 }
 
 workflow sourmash_WIMP_FASTQ_wf {
-    take:    fastq_input_ch
+    take:   fastq_input_ch
             sourmash_DB
     main:   rmetaplot(sourmashmeta(fastqTofasta(fastq_input_ch),sourmash_DB))
 }
 
 workflow sourmash_tax_classification_wf {
-    take:    fasta_input_ch
+    take:   fasta_input_ch
             sourmash_DB
-    main:   sourmashclass(fasta_input_ch,sourmash_DB)
+    main:   sourmashclassification(fasta_input_ch,sourmash_DB)
 }
 
 workflow dev_build_centrifuge_DB_cloud_wf {
@@ -260,30 +264,17 @@ workflow sourmash_CLUSTERING_DIR_wf {
             sourclusterPlot(sourmashclusterdir.out[1])
 }
 
-/*
-recentrifuge module:
-
-workflow recentrifuge()
-{
-  output="recentrifuge_${label}"
-  mkdir -p $output
-  echo -e "Searching for *.out files in ${YEL}${infolder_path}${NC} ..."
-    test_files=$(ls -1 ${infolder_path}/*.out 2> /dev/null)
-    if [ -z "${test_files}" ]; then echo -e "  Can't find .out files in ${YEL}${infolder_path}${NC}, exiting"; exit 1; fi
-    # adjusting command for more than 1 file
-      filenames=$(find ${infolder_path}/*.out -type f -print0  | xargs -0 -n 1 basename)
-      input_for_docker="${filenames//$'\n'/ -f /input/}"
-      input_for_docker='-f /input/'${input_for_docker}
-      Num_of_samples=$(echo "$filenames" | wc -l)
-  echo -e "Found ${YEL}${Num_of_samples}${NC} file(s)"
-  docker run --user $(id -u):$(id -g) --rm -it \
-    -v ${infolder_path}:/input \
-    -v $WORKDIRPATH/${output}:/output \
-    replikation/recentrifuge \
-    -n /database/ncbi_node $input_for_docker -o /output/${Num_of_samples}_samples_overview.html
+workflow amino_acid_tree_wf {
+    take:   dir_input_ch
+    main:   toytree(fasttree(mafft(dir_input_ch)))
 }
 
-*/
+workflow amino_acid_tree_supp_wf {
+    take:   dir_input_ch
+            proteins
+    main:   toytree(fasttree(mafft_supp(dir_input_ch, proteins.map{ it -> it[1]})))
+}
+
 
 /************************** 
 * MAIN WORKFLOW
@@ -306,6 +297,9 @@ workflow {
     if (params.sourcluster && params.fasta) { sourmash_CLUSTERING_FASTA_wf(fasta_input_ch) }
     if (params.sourmeta && params.fasta) { sourmash_WIMP_FASTA_wf(fasta_input_ch, sourmash_database_wf()) }
     if (params.sourmeta && params.fastq) { sourmash_WIMP_FASTQ_wf(fastq_input_ch, sourmash_database_wf()) }
+    if (params.tree_aa && params.dir && !params.fasta) { amino_acid_tree_wf(dir_input_ch) }
+    if (params.tree_aa && params.dir && params.fasta) { amino_acid_tree_supp_wf(dir_input_ch, fasta_input_ch) }
+    
 }
 
 /*************  
@@ -355,6 +349,9 @@ def helpMSG() {
     ${c_blue} --sourcluster ${c_reset}       sequence comparision with kmers     ${c_green}[--fasta]${c_reset} or ${c_green}[--dir]${c_reset}
     ${c_dim}  ..inputs:                  cluster contigs: [--fasta]; cluster fastas: [--dir]${c_reset}
     ${c_dim}  ..option flags:            [--size] figure size; default [--size $params.size]${c_reset}
+    ${c_blue} --tree_aa ${c_reset}           build a aminoacid tree              ${c_green}[--dir]${c_reset}
+    ${c_dim}  ..option flags:            [--filenames] use filenames as labels instead of contig names${c_reset}
+                                         [--fasta] add one multi protein file as "tree enhancer"e.g. [--fasta multipleProteins.aa]${c_reset}
 
 
     ${c_yellow}Options:${c_reset}
@@ -374,6 +371,6 @@ def helpMSG() {
     -with-timeline time.html timeline (may cause errors)
 
     Profile:
-    -profile                 standard, gcloud, UKJ [default: standard] ${c_reset}
+    -profile                 local gcloud docker -> merge profiles e.g. -profile local,docker ${c_reset}
     """.stripIndent()
 }
