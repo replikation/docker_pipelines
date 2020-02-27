@@ -13,3 +13,17 @@ process abricate {
     """
 }
 
+process abricate_compare {
+    label 'abricate'
+  input:
+    tuple val(name), val(type), path(fasta) 
+    each method
+  output:
+	  path("${method}_${type}_${name}.abricate")
+  script:
+    """
+    rnd=${Math.random()}
+
+  	abricate ${fasta} --nopath --quiet --mincov 85 --db ${method} > ${method}_${type}_${name}.abricate
+    """
+}

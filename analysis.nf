@@ -38,7 +38,7 @@ if (params.fastq && params.metamaps && params.tax_db == '') {
 if (params.fasta && params.list) { fasta_input_ch = Channel
         .fromPath( params.fasta, checkIfExists: true )
         .splitCsv()
-        .map { row -> ["${row[0]}", file("${row[1]}", checkIfExists: true)]  }
+        .map { row -> [row[0], file("${row[1]}", checkIfExists: true)]  }
         }
 else if (params.fasta) { fasta_input_ch = Channel
         .fromPath( params.fasta, checkIfExists: true)
@@ -60,7 +60,7 @@ else if (params.fastq) { fastq_input_ch = Channel
 if (params.dir && params.list) { dir_input_ch = Channel
         .fromPath( params.dir, checkIfExists: true )
         .splitCsv()
-        .map { row -> ["${row[0]}", file("${row[1]}", checkIfExists: true , type: 'dir')] }
+        .map { row -> [row[0], file("${row[1]}", checkIfExists: true , type: 'dir')] }
         .view() }
 else if (params.dir) { dir_input_ch = Channel
         .fromPath( params.dir, checkIfExists: true, type: 'dir')
@@ -71,7 +71,7 @@ else if (params.dir) { dir_input_ch = Channel
 if (params.fastqPair && params.list) { fastqPair_input_ch = Channel
         .fromPath( params.fastqPair, checkIfExists: true )
         .splitCsv()
-        .map { row -> ["${row[0]}", [file("${row[1]}", checkIfExists: true), file("${row[2]}", checkIfExists: true)]] }
+        .map { row -> [row[0], [file("${row[1]}", checkIfExists: true), file("${row[2]}", checkIfExists: true)]] }
         }
 else if (params.fastqPair) { fastqPair_input_ch = Channel
         .fromFilePairs( params.fastqPair , checkIfExists: true )
@@ -164,6 +164,18 @@ workflow centrifuge_database_wf {
     include sourmashclusterfasta from './modules/sourclusterfasta' 
     include sourmashmeta from './modules/sourmeta' 
     include toytree from './modules/toytree' 
+
+    // new
+    include abricate_compare as abricate_chromosomes from './modules/abricate'
+    include abricate_compare as abricate_plasmids from './modules/abricate'
+    include abricate_compare as abricate_unknown from './modules/abricate'
+    include fargene as fargene_chromosomes from './modules/fargene'
+    include fargene as fargene_plasmids from './modules/fargene'
+    include fargene as fargene_unknown from './modules/fargene'
+    include plasflow_compare from './modules/plasflow' 
+    include overview_parser from './modules/PARSER/overview_parser'
+    include baloonplot from './modules/PLOTS/baloonplot'
+    
 
 /************************** 
 * SUB WORKFLOWS
@@ -275,6 +287,40 @@ workflow amino_acid_tree_supp_wf {
     main:   toytree(fasttree(mafft_supp(dir_input_ch, proteins.map{ it -> it[1]})))
 }
 
+workflow resistance_comparision_wf {
+  take: 
+    fastas    //val(name), path(file))
+  main:
+    
+    plasflow_compare(fastas) 
+
+    // abricate
+    method = ['ncbi']
+    abricate_chromosomes(plasflow_compare.out.genome, method)
+    abricate_plasmids(plasflow_compare.out.plasmids, method)
+    abricate_unknown(plasflow_compare.out.unclassified, method)
+
+    // fargene
+    hmm_method = ['class_a', 'class_b_1_2', 'class_b_3', 'class_c', 'class_d_1', 'class_d_2']
+    fargene_chromosomes(plasflow_compare.out.genome, hmm_method)
+    fargene_plasmids(plasflow_compare.out.plasmids, hmm_method)
+    fargene_unknown(plasflow_compare.out.unclassified, hmm_method) 
+
+    //summarize this visualy
+    overview_parser(    abricate_chromosomes.out.collect(),
+                        abricate_plasmids.out.collect(),
+                        abricate_unknown.out.collect(),
+                        fargene_chromosomes.out.collect(),
+                        fargene_plasmids.out.collect(),
+                        fargene_unknown.out.collect(),
+                        fastas.map { samplenames -> samplenames[0] }.collect() 
+                    )
+
+
+    baloonplot(overview_parser.out)
+
+} 
+
 
 /************************** 
 * MAIN WORKFLOW
@@ -299,6 +345,8 @@ workflow {
     if (params.sourmeta && params.fastq) { sourmash_WIMP_FASTQ_wf(fastq_input_ch, sourmash_database_wf()) }
     if (params.tree_aa && params.dir && !params.fasta) { amino_acid_tree_wf(dir_input_ch) }
     if (params.tree_aa && params.dir && params.fasta) { amino_acid_tree_supp_wf(dir_input_ch, fasta_input_ch) }
+
+    if (params.res_compare && params.fasta) { resistance_comparision_wf(fasta_input_ch) }
     
 }
 
@@ -342,6 +390,7 @@ def helpMSG() {
     ${c_dim}  ..mandatory flags:         [--memory] [--tax_db] e.g. --memory 100 --tax_db /databases/miniSeq+H 
     ${c_blue} --nanoplot  ${c_reset}         read quality via nanoplot           ${c_green}[--fastq]${c_reset}
     ${c_blue} --plasflow ${c_reset}          predicts & seperates plasmid-seqs${c_green}   [--fasta]${c_reset}
+    ${c_blue} --res_compare ${c_reset}       detailed assembly resistance comparision${c_green}   [--fasta]${c_reset}
     ${c_blue} --sourmeta ${c_reset}          metagenomic analysis "WIMP"         ${c_green}[--fasta]${c_reset} or ${c_green}[--fastq]${c_reset}
     ${c_dim}  ..option flags:            [--sour_db] path to your own DB instead ${c_reset}
     ${c_blue} --sourclass ${c_reset}         taxonomic classification            ${c_green}[--fasta]  ${c_reset}
