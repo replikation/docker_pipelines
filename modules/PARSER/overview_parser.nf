@@ -2,26 +2,19 @@ process overview_parser {
     publishDir "${params.output}/", mode: 'copy'
     label 'ubuntu'   
   input:
-    path(results_abri_chromosomes)
-    path(results_abri_plasmids)
-    path(results_abri_unclassified)
-	  path(results_far_chromosomes)
-    path(results_far_plasmids)
-    path(results_far_unclassified)
+    path(results)
     val(sampleIDs)
   output:
 	  file("input.csv") 
   shell:
     """
-
-
     all_sample_IDs=\$(echo "${sampleIDs}" | tr -d " []" | tr "," "\\n")
 
     header=\$(echo "${sampleIDs}" | tr -d " []")
     printf "type,\${header}\\n" > input.csv
 
-    ABRIMETHODS=\$(cat *.abricate | grep -v "^#FILE" | cut -f15 | sort | uniq )
-    FARMETHODS=\$(head -n 2 -q *.fargene | grep "The used HMM-model was:" | awk '{print \$5}' | sort | uniq | sort )
+    ABRIMETHODS=\$(cat *.abricate_* | grep -v "^#FILE" | cut -f15 | sort | uniq )
+    FARMETHODS=\$(head -n 2 -q *.fargene_* | grep "The used HMM-model was:" | awk '{print \$5}' | sort | uniq | sort )
 
     ##############
     # ABRICATE
@@ -32,7 +25,7 @@ process overview_parser {
       printf "\${method}-genome" >> input.csv
 
       while IFS= read -r sampleID ; do
-        amount=\$(cat *_chromosome_\${sampleID}.abricate *_unclassified_\${sampleID}.abricate | grep "\${method}" | wc -l)
+        amount=\$(cat *_chromosome_\${sampleID}.abricate_* *_unclassified_\${sampleID}.abricate_* | grep "\${method}" | wc -l)
   
         if test \$amount -gt 0 
         then 
@@ -47,8 +40,9 @@ process overview_parser {
 
       # plasmid
       printf "\${method}-plasmid" >> input.csv
+
       while IFS= read -r sampleID ; do
-        amount=\$(grep -c "\${method}" *_plasmid_\${sampleID}.abricate | wc -l)
+        amount=\$(grep "\${method}" *_plasmid_\${sampleID}.abricate_* | wc -l)
   
         if test \$amount -gt 0  
         then 
@@ -58,10 +52,8 @@ process overview_parser {
         fi
 
       done < <(echo "\${all_sample_IDs}")
+
       printf "\\n" >> input.csv
-
-
-
 
     done < <(echo "\${ABRIMETHODS}")  
 
@@ -69,6 +61,44 @@ process overview_parser {
     # FARGENE
     ##############
 
+    while IFS= read -r method ; do
+      # chromosome
+      printf "\${method}-genome" >> input.csv
+
+      while IFS= read -r sampleID ; do
+        amount=\$(cat *_chromosome_\${sampleID}.fargene_* *_unclassified_\${sampleID}.fargene_* |  grep "Number of predicted genes" |\
+                awk '{printf "%s\\n",\$5}' | awk '{s+=\$1} END {print s}')
+
+        if test \$amount -gt 0 
+        then 
+          printf ",\$amount" >> input.csv 
+        else  
+          printf ",NA" >> input.csv 
+        fi
+
+      done < <(echo "\${all_sample_IDs}")
+
+      printf "\\n" >> input.csv
+
+      # plasmid
+      printf "\${method}-plasmid" >> input.csv
+
+      while IFS= read -r sampleID ; do
+        amount=\$(cat *_plasmid_\${sampleID}.fargene_* |  grep "Number of predicted genes" |\
+                awk '{printf "%s\\n",\$5}' | awk '{s+=\$1} END {print s}')
+  
+        if test \$amount -gt 0  
+        then 
+          printf ",\$amount" >> input.csv 
+        else  
+          printf ",NA" >> input.csv 
+        fi
+
+      done < <(echo "\${all_sample_IDs}")
+
+      printf "\\n" >> input.csv
+
+    done < <(echo "\${FARMETHODS}")  
     """
 }
 

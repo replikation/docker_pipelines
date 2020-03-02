@@ -291,9 +291,12 @@ workflow resistance_comparision_wf {
   take: 
     fastas    //val(name), path(file))
   main:
-    
-    plasflow_compare(fastas) 
+    input_ch_plasflow = fastas.splitFasta(by: 50000, file: true)
+                        .map { it -> tuple ( it[0], file(it[1]).baseName, it[1] ) }
 
+
+    plasflow_compare( input_ch_plasflow ) 
+    
     // abricate
     method = ['ncbi']
     abricate_chromosomes(plasflow_compare.out.genome, method)
@@ -301,18 +304,20 @@ workflow resistance_comparision_wf {
     abricate_unknown(plasflow_compare.out.unclassified, method)
 
     // fargene
-    hmm_method = ['class_a', 'class_b_1_2', 'class_b_3', 'class_c', 'class_d_1', 'class_d_2']
+    //hmm_method = ['class_a', 'class_b_1_2', 'class_b_3', 'class_c', 'class_d_1', 'class_d_2']
+    hmm_method = ['class_a']
     fargene_chromosomes(plasflow_compare.out.genome, hmm_method)
     fargene_plasmids(plasflow_compare.out.plasmids, hmm_method)
     fargene_unknown(plasflow_compare.out.unclassified, hmm_method) 
 
     //summarize this visualy
-    overview_parser(    abricate_chromosomes.out.collect(),
-                        abricate_plasmids.out.collect(),
-                        abricate_unknown.out.collect(),
-                        fargene_chromosomes.out.collect(),
-                        fargene_plasmids.out.collect(),
-                        fargene_unknown.out.collect(),
+    overview_parser(    abricate_chromosomes.out
+                        .mix(abricate_plasmids.out)
+                        .mix(abricate_unknown.out)
+                        .mix(fargene_chromosomes.out)
+                        .mix(fargene_plasmids.out)
+                        .mix(fargene_unknown.out)
+                        .collect(),
                         fastas.map { samplenames -> samplenames[0] }.collect() 
                     )
 

@@ -15,15 +15,14 @@ process abricate {
 
 process abricate_compare {
     label 'abricate'
+    def random = (Math.random() + Math.random()).toString().md5().toString()
   input:
     tuple val(name), val(type), path(fasta) 
     each method
   output:
-	  path("${method}_${type}_${name}.abricate")
+	  path("${method}_${type}_${name}.abricate_${random}")
   script:
     """
-    rnd=${Math.random()}
-
-  	abricate ${fasta} --nopath --quiet --mincov 85 --db ${method} > ${method}_${type}_${name}.abricate
+  	abricate ${fasta} --nopath --quiet --mincov 85 --db ${method} > ${method}_${type}_${name}.abricate_${random}
     """
 }
