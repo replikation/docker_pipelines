@@ -19,12 +19,13 @@ process plasflow_compare {
       publishDir "${params.output}/plasflow/${name}/plasmids", mode: 'copy', pattern: "${name}_${splitname}_plasmids.fasta"
       publishDir "${params.output}/plasflow/${name}/unclassified", mode: 'copy', pattern: "${name}_${splitname}_unclassified.fasta"
       label 'plasflow'
+      maxForks 4
     input:
       tuple val(name), val(splitname), path(fasta) 
     output:
-      tuple val(name), val("chromosome"), path("${name}_${splitname}_chromosomes.fasta"), emit: genome, optional: true
-      tuple val(name), val("plasmid"), path("${name}_${splitname}_plasmids.fasta"), emit: plasmids, optional: true
-      tuple val(name), val("unclassified"), path("${name}_${splitname}_unclassified.fasta"), emit: unclassified, optional: true
+      tuple val(name), val(splitname), val("chromosome"), path("${name}_${splitname}_chromosomes.fasta"), emit: genome, optional: true
+      tuple val(name), val(splitname), val("plasmid"), path("${name}_${splitname}_plasmids.fasta"), emit: plasmids, optional: true
+      tuple val(name), val(splitname), val("unclassified"), path("${name}_${splitname}_unclassified.fasta"), emit: unclassified, optional: true
     script:
       """
       PlasFlow.py --input ${fasta} --output ${name}_${splitname} --threshold 0.7

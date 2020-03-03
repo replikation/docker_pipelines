@@ -12,8 +12,11 @@ library(viridis)
 
 input  <- read.delim("input.csv", row.names = 1, sep = ",")
 
-sizew <- ( ncol(input) * 0.3 ) + 3
-sizeh <- ( nrow(input) * 0.3 ) + 3
+sizew <- ceiling(( ncol(input) * 0.3 ) + 4 )
+sizeh <- ceiling(( nrow(input) * 0.3 ) + 4 )
+#sizew <- 8
+#sizeh <- 8
+
 #sorting data
 data <- input[,sort(names(input))] 
 

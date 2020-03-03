@@ -13,8 +13,8 @@ process overview_parser {
     header=\$(echo "${sampleIDs}" | tr -d " []")
     printf "type,\${header}\\n" > input.csv
 
-    ABRIMETHODS=\$(cat *.abricate_* | grep -v "^#FILE" | cut -f15 | sort | uniq )
-    FARMETHODS=\$(head -n 2 -q *.fargene_* | grep "The used HMM-model was:" | awk '{print \$5}' | sort | uniq | sort )
+    ABRIMETHODS=\$(cat *.abricate | grep -v "^#FILE" | cut -f15 | sort | uniq )
+    FARMETHODS=\$(head -n 2 -q *.fargene | grep "The used HMM-model was:" | awk '{print \$5}' | sort | uniq | sort )
 
     ##############
     # ABRICATE
@@ -25,7 +25,7 @@ process overview_parser {
       printf "\${method}-genome" >> input.csv
 
       while IFS= read -r sampleID ; do
-        amount=\$(cat *_chromosome_\${sampleID}.abricate_* *_unclassified_\${sampleID}.abricate_* | grep "\${method}" | wc -l)
+        amount=\$(cat *_chromosome_\${sampleID}_*.abricate *_unclassified_\${sampleID}_*.abricate | grep "\${method}" | wc -l)
   
         if test \$amount -gt 0 
         then 
@@ -42,7 +42,7 @@ process overview_parser {
       printf "\${method}-plasmid" >> input.csv
 
       while IFS= read -r sampleID ; do
-        amount=\$(grep "\${method}" *_plasmid_\${sampleID}.abricate_* | wc -l)
+        amount=\$(grep "\${method}" *_plasmid_\${sampleID}_*.abricate | wc -l)
   
         if test \$amount -gt 0  
         then 
@@ -58,15 +58,16 @@ process overview_parser {
     done < <(echo "\${ABRIMETHODS}")  
 
     ##############
-    # FARGENE
+    # FARGENE                 ERROR FAR METHODE IS NOT INCLUDED via HEAD
     ##############
 
     while IFS= read -r method ; do
       # chromosome
-      printf "\${method}-genome" >> input.csv
+      printf "\${method%.hmm}-genome" >> input.csv
 
       while IFS= read -r sampleID ; do
-        amount=\$(cat *_chromosome_\${sampleID}.fargene_* *_unclassified_\${sampleID}.fargene_* |  grep "Number of predicted genes" |\
+        amount=\$(cat *_chromosome_\${sampleID}_*.fargene *_unclassified_\${sampleID}_*.fargene | grep -A 5 "\${method}" |\
+                grep "Number of predicted genes" |\
                 awk '{printf "%s\\n",\$5}' | awk '{s+=\$1} END {print s}')
 
         if test \$amount -gt 0 
@@ -81,10 +82,11 @@ process overview_parser {
       printf "\\n" >> input.csv
 
       # plasmid
-      printf "\${method}-plasmid" >> input.csv
+      printf "\${method%.hmm}-plasmid" >> input.csv
 
       while IFS= read -r sampleID ; do
-        amount=\$(cat *_plasmid_\${sampleID}.fargene_* |  grep "Number of predicted genes" |\
+        amount=\$(cat *_plasmid_\${sampleID}_*.fargene | grep -A 5 "\${method}" |\
+                grep "Number of predicted genes" |\
                 awk '{printf "%s\\n",\$5}' | awk '{s+=\$1} END {print s}')
   
         if test \$amount -gt 0  

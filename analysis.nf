@@ -138,12 +138,19 @@ workflow centrifuge_database_wf {
     include abricateParserFASTA from './modules/PARSER/abricateParserFASTA'
     include abricatePlot from './modules/PLOTS/abricatePlot'
     include abricatePlotFASTA from './modules/PLOTS/abricatePlotFASTA' 
+    include abricate_compare as abricate_chromosomes from './modules/abricate'
+    include abricate_compare as abricate_plasmids from './modules/abricate'
+    include abricate_compare as abricate_unknown from './modules/abricate'
+    include baloonplot from './modules/PLOTS/baloonplot'
     include bwaUnmapped from './modules/bwaUnmapped' 
     include centrifuge from './modules/centrifuge' 
     include centrifuge_download_db from './modules/centrifugegetdatabase' 
     include centrifuge_illumina from './modules/centrifuge_illumina' 
     include dev from './modules/dev' 
     include downloadHuman from './modules/downloadHuman' 
+    include fargene as fargene_chromosomes from './modules/fargene'
+    include fargene as fargene_plasmids from './modules/fargene'
+    include fargene as fargene_unknown from './modules/fargene'
     include fastqTofasta from './modules/fastqTofasta' 
     include fasttree from './modules/fasttree'
     include gtdbtk from './modules/gtdbtk' 
@@ -154,7 +161,9 @@ workflow centrifuge_database_wf {
     include mafft_supp from './modules/mafft_supp'
     include metamaps from './modules/metamaps' 
     include nanoplot from './modules/nanoplot' 
+    include overview_parser from './modules/PARSER/overview_parser'
     include plasflow from './modules/plasflow' 
+    include plasflow_compare from './modules/plasflow' 
     include removeViaMapping from './modules/removeViaMapping' 
     include rmetaplot from './modules/rmetaplot' 
     include sourclusterPlot from './modules/PLOTS/sourclusterPlot' 
@@ -164,18 +173,13 @@ workflow centrifuge_database_wf {
     include sourmashclusterfasta from './modules/sourclusterfasta' 
     include sourmashmeta from './modules/sourmeta' 
     include toytree from './modules/toytree' 
+    include abricate_transposon from './modules/abricate' 
 
-    // new
-    include abricate_compare as abricate_chromosomes from './modules/abricate'
-    include abricate_compare as abricate_plasmids from './modules/abricate'
-    include abricate_compare as abricate_unknown from './modules/abricate'
-    include fargene as fargene_chromosomes from './modules/fargene'
-    include fargene as fargene_plasmids from './modules/fargene'
-    include fargene as fargene_unknown from './modules/fargene'
-    include plasflow_compare from './modules/plasflow' 
-    include overview_parser from './modules/PARSER/overview_parser'
-    include baloonplot from './modules/PLOTS/baloonplot'
-    
+    //new 
+    include chromomap from './modules/PLOTS/chromomap'
+    include parse_samtools from './modules/PARSER/parse_samtools' 
+    include parse_plasmidinfo from './modules/PARSER/parse_plasmidinfo' 
+
 
 /************************** 
 * SUB WORKFLOWS
@@ -226,6 +230,13 @@ workflow abricate_FASTA_wf {
     take:   fasta_input_ch
     main:   method = ['argannot', 'card', 'ncbi', 'plasmidfinder', 'resfinder']
             abricatePlotFASTA(abricateParserFASTA(abricate(fasta_input_ch, method)))
+}
+
+workflow abricate_FASTA_transposon_wf {
+    take:   fasta_input_ch
+    main:   mobile_database = Channel.fromPath( workflow.projectDir + "/data/IS.fna", checkIfExists: true )
+            abricate_transposon(fasta_input_ch, mobile_database)
+    emit:   abricate_transposon.out // used in plasmid_comparision_wf {}
 }
 
 workflow gtdbtk_wf {
@@ -292,8 +303,7 @@ workflow resistance_comparision_wf {
     fastas    //val(name), path(file))
   main:
     input_ch_plasflow = fastas.splitFasta(by: 50000, file: true)
-                        .map { it -> tuple ( it[0], file(it[1]).baseName, it[1] ) }
-
+                        .map { it -> tuple ( it[0], file(it[1]).getName(), it[1] ) }
 
     plasflow_compare( input_ch_plasflow ) 
     
@@ -304,16 +314,15 @@ workflow resistance_comparision_wf {
     abricate_unknown(plasflow_compare.out.unclassified, method)
 
     // fargene
-    //hmm_method = ['class_a', 'class_b_1_2', 'class_b_3', 'class_c', 'class_d_1', 'class_d_2']
-    hmm_method = ['class_a']
+    hmm_method = ['class_a', 'class_b_1_2', 'class_b_3', 'class_c', 'class_d_1', 'class_d_2']
     fargene_chromosomes(plasflow_compare.out.genome, hmm_method)
     fargene_plasmids(plasflow_compare.out.plasmids, hmm_method)
     fargene_unknown(plasflow_compare.out.unclassified, hmm_method) 
 
     //summarize this visualy
-    overview_parser(    abricate_chromosomes.out
-                        .mix(abricate_plasmids.out)
-                        .mix(abricate_unknown.out)
+    overview_parser(    abricate_chromosomes.out.map{ it -> it [1]}
+                        .mix(abricate_plasmids.out.map{ it -> it [1]})
+                        .mix(abricate_unknown.out.map{ it -> it [1]})
                         .mix(fargene_chromosomes.out)
                         .mix(fargene_plasmids.out)
                         .mix(fargene_unknown.out)
@@ -321,11 +330,32 @@ workflow resistance_comparision_wf {
                         fastas.map { samplenames -> samplenames[0] }.collect() 
                     )
 
-
     baloonplot(overview_parser.out)
 
 } 
 
+workflow plasmid_comparision_wf {
+  take: 
+    fastas    //val(name), path(file)
+  main:
+    input_ch_plasflow = fastas.splitFasta(by: 50000, file: true)
+                        .map { it -> tuple ( it[0], file(it[1]).getName(), it[1] ) }
+
+    plasflow_compare( input_ch_plasflow )
+
+    // abricate
+    method = ['ncbi', 'plasmidfinder']
+    abricate_plasmids(plasflow_compare.out.plasmids, method)      // *.abricate
+    abricate_FASTA_transposon_wf(plasflow_compare.out.plasmids.map { it -> [it[0], it[3]] })  // *.tab
+
+    group_by_sample = abricate_plasmids.out.groupTuple().join(abricate_FASTA_transposon_wf.out.groupTuple())
+ 
+    chromomap(parse_samtools(parse_plasmidinfo(group_by_sample).join(fastas)))
+
+    
+}
+
+// 46/482d98
 
 /************************** 
 * MAIN WORKFLOW
@@ -334,6 +364,7 @@ workflow resistance_comparision_wf {
 workflow {
     if (params.abricate && params.fasta) { abricate_FASTA_wf(fasta_input_ch) }
     if (params.abricate && params.fastq) { abricate_FASTQ_wf(fastq_input_ch) }
+    if (params.mobile && params.fasta) { abricate_FASTA_transposon_wf(fasta_input_ch) }
     if (params.centrifuge && params.fastq) { centrifuge_wf(fastq_input_ch, centrifuge_database_wf()) }
     if (params.centrifuge && params.fastqPair) { centrifuge_illumina_wf(fastqPair_input_ch, centrifuge_database_wf()) }
     if (params.deepHumanPathogen && params.fastqPair) { deepHumanPathogen_wf(fastqPair_input_ch)}
@@ -343,6 +374,8 @@ workflow {
     if (params.metamaps && params.fastq) { metamaps_wf(fastq_input_ch,metamaps_database_wf()) }
     if (params.nanoplot && params.fastq) { nanoplot_wf(fastq_input_ch) }   
     if (params.plasflow && params.fasta) { plasflow_wf(fasta_input_ch) }
+    if (params.res_compare && !params.plasmid_analysis && params.fasta) { resistance_comparision_wf(fasta_input_ch) }
+    if (!params.res_compare && params.plasmid_analysis && params.fasta) { plasmid_comparision_wf(fasta_input_ch) }
     if (params.sourclass && params.fasta) { sourmash_tax_classification_wf(fasta_input_ch, sourmash_database_wf()) }
     if (params.sourcluster && params.dir ) { sourmash_CLUSTERING_DIR_wf(dir_input_ch) }
     if (params.sourcluster && params.fasta) { sourmash_CLUSTERING_FASTA_wf(fasta_input_ch) }
@@ -350,9 +383,7 @@ workflow {
     if (params.sourmeta && params.fastq) { sourmash_WIMP_FASTQ_wf(fastq_input_ch, sourmash_database_wf()) }
     if (params.tree_aa && params.dir && !params.fasta) { amino_acid_tree_wf(dir_input_ch) }
     if (params.tree_aa && params.dir && params.fasta) { amino_acid_tree_supp_wf(dir_input_ch, fasta_input_ch) }
-
-    if (params.res_compare && params.fasta) { resistance_comparision_wf(fasta_input_ch) }
-    
+  
 }
 
 /*************  
@@ -370,32 +401,22 @@ def helpMSG() {
     Nextflow Analysis modules for easy use, by Christian Brandt
     
     ${c_yellow}Usage example:${c_reset}
-    nextflow run replikation/docker_pipelines --fasta '*/*.fasta' --sourmeta --sourclass
+    nextflow run replikation/docker_pipelines --fasta '*/*.fasta' --sourmeta --sourclass -profile local,docker 
 
-    ${c_yellow}Input:${c_reset}
+    ${c_yellow}Inputs:${c_reset}
     ${c_green} --fasta ${c_reset}            '*.fasta'   -> assembly file(s) - uses filename
     ${c_green} --fastq ${c_reset}            '*.fastq'   -> read file(s) in fastq, one sample per file - uses filename
-    ${c_green} --fastqPair ${c_reset}            '*_R{1,2}.fastq.gz'   -> fastq file pairs
+    ${c_green} --fastqPair ${c_reset}        '*_R{1,2}.fastq.gz'   -> fastq file pairs
     ${c_green} --dir  ${c_reset}             'foobar*/'  -> folder(s) as input - uses dirname
-    ${c_dim}  ..change above input to csv:${c_reset} ${c_green}--list ${c_reset}            
+    ${c_dim}  ..change above input to csv:${c_reset} ${c_green}--list ${c_reset}${c_dim} e.g. --fasta list_files.csv --list            
 
-    ${c_yellow}Workflows:${c_reset}
+    ${c_yellow}Resistance Workflows:${c_reset}
     ${c_blue} --abricate ${c_reset}          antibiotic and plasmid screening    ${c_green}[--fasta]${c_reset} or ${c_green}[--fastq]${c_reset}
-    ${c_blue} --centrifuge ${c_reset}        metagenomic classification of reads${c_green} [--fastq]${c_reset} or ${c_green}[--fastqPair]${c_reset}
-    ${c_dim}  ..option flags:            [--centrifuge_db] path to your own DB instead, either .tar or .tar.gz ${c_reset}
-    ${c_blue} --deepHumanPathogen ${c_reset} pathogen identification in human  ${c_green}  [--fastqPair '*_R{1,2}.fastq.gz']${c_reset}
-    ${c_blue} --gtdbtk ${c_reset}            tax. class. via marker genes        ${c_green}[--dir]${c_reset}
-    ${c_dim}  ..option flags:            [--gtdbtk_db] path to your own DB instead ${c_reset}
-    ${c_blue} --guppygpu ${c_reset}          basecalling via guppy-gpu-nvidia   ${c_green} [--dir]${c_reset}
-    ${c_dim}  ..option flags:            [--flowcell] [--kit] [--barcode] [--modbase]
-      ..default settings:        [--flowcell $params.flowcell] [--kit $params.kit] [--modbase FALSE] ${c_reset}
-    ${c_dim}  ..config files:            turn on via [--config], modify config type via [--configtype] 
-      ..default config type:     [--configtype $params.configtype]  ${c_reset}
-    ${c_blue} --metamaps ${c_reset}          metagenomic class. of long reads   ${c_green} [--fastq]${c_reset}
-    ${c_dim}  ..mandatory flags:         [--memory] [--tax_db] e.g. --memory 100 --tax_db /databases/miniSeq+H 
-    ${c_blue} --nanoplot  ${c_reset}         read quality via nanoplot           ${c_green}[--fastq]${c_reset}
-    ${c_blue} --plasflow ${c_reset}          predicts & seperates plasmid-seqs${c_green}   [--fasta]${c_reset}
-    ${c_blue} --res_compare ${c_reset}       detailed assembly resistance comparision${c_green}   [--fasta]${c_reset}
+    ${c_blue} --mobile ${c_reset}            screens for IS elements             ${c_green}[--fasta]${c_reset}
+    ${c_blue} --res_compare ${c_reset}       detailed assembly resistance comparision of 2 or more assemblies ${c_green} [--fasta]${c_reset}
+    ${c_blue} --plasmid_analysis ${c_reset}  analysis of plasmids with plots     ${c_green}[--fasta]${c_reset}
+
+    ${c_yellow}Cluster and Classifications:${c_reset} 
     ${c_blue} --sourmeta ${c_reset}          metagenomic analysis "WIMP"         ${c_green}[--fasta]${c_reset} or ${c_green}[--fastq]${c_reset}
     ${c_dim}  ..option flags:            [--sour_db] path to your own DB instead ${c_reset}
     ${c_blue} --sourclass ${c_reset}         taxonomic classification            ${c_green}[--fasta]  ${c_reset}
@@ -403,17 +424,36 @@ def helpMSG() {
     ${c_blue} --sourcluster ${c_reset}       sequence comparision with kmers     ${c_green}[--fasta]${c_reset} or ${c_green}[--dir]${c_reset}
     ${c_dim}  ..inputs:                  cluster contigs: [--fasta]; cluster fastas: [--dir]${c_reset}
     ${c_dim}  ..option flags:            [--size] figure size; default [--size $params.size]${c_reset}
-    ${c_blue} --tree_aa ${c_reset}           build a aminoacid tree              ${c_green}[--dir]${c_reset}
+    ${c_blue} --gtdbtk ${c_reset}            tax. class. via marker genes        ${c_green}[--dir]${c_reset}
+    ${c_dim}  ..option flags:            [--gtdbtk_db] path to your own DB instead ${c_reset}
+
+    ${c_yellow}Metagenomic Workflows:${c_reset}
+    ${c_blue} --centrifuge ${c_reset}        metagenomic classification of reads${c_green} [--fastq]${c_reset} or ${c_green}[--fastqPair]${c_reset}
+    ${c_dim}  ..option flags:            [--centrifuge_db] path to your own DB instead, either .tar or .tar.gz ${c_reset}
+    ${c_blue} --metamaps ${c_reset}          metagenomic class. of long reads   ${c_green} [--fastq]${c_reset}
+    ${c_dim}  ..mandatory flags:         [--memory] [--tax_db] e.g. --memory 100 --tax_db /databases/miniSeq+H 
+
+    ${c_yellow}Nanopore specific Workflows:${c_reset}
+    ${c_blue} --guppygpu ${c_reset}          basecalling via guppy-gpu-nvidia   ${c_green} [--dir]${c_reset}
+    ${c_dim}  ..option flags:            [--flowcell] [--kit] [--barcode] [--modbase]
+      ..default settings:        [--flowcell $params.flowcell] [--kit $params.kit] [--modbase FALSE] ${c_reset}
+    ${c_dim}  ..config files:            turn on via [--config], modify config type via [--configtype] 
+      ..default config type:     [--configtype $params.configtype]  ${c_reset}
+    ${c_blue} --nanoplot  ${c_reset}         read quality via nanoplot           ${c_green}[--fastq]${c_reset}
+
+    ${c_yellow}Other Workflows:${c_reset}
+    ${c_blue} --deepHumanPathogen ${c_reset} pathogen identification in human  ${c_green}  [--fastqPair '*_R{1,2}.fastq.gz']${c_reset}    
+    ${c_blue} --plasflow ${c_reset}          predicts & seperates plasmid-seqs${c_green}   [--fasta]${c_reset}
+    ${c_blue} --tree_aa ${c_reset}           build a aminoacid tree of a dir with aa seqs  ${c_green}[--dir]${c_reset}
     ${c_dim}  ..option flags:            [--filenames] use filenames as labels instead of contig names${c_reset}
                                          [--fasta] add one multi protein file as "tree enhancer"e.g. [--fasta multipleProteins.aa]${c_reset}
 
-
-    ${c_yellow}Options:${c_reset}
+    ${c_reset}Options:
     --cores             max cores for local use [default: $params.cores]
     --memory            80% of available RAM in GB for --metamaps [default: $params.memory]
     --output            name of the result folder [default: $params.output]
 
-    ${c_yellow}Database(s) behaviour${c_reset}
+    ${c_reset}Database(s) behaviour${c_reset}
     The Priority is:
     1. Use your own DB via the flags, e.g. [--sour_db] [--gtdbtk_db]
     2. Without a flag it downloads/retrives a database to/from: ./nextflow-autodownload-databases
