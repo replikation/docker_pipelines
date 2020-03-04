@@ -19,6 +19,7 @@ process chromomap {
       p <-  chromoMap("${chromosome}","${annotation}",
             data_based_color_map = T,
             data_type = "categorical",
+            segment_annotation = T,
             data_colors = list(c("lightblue", "orange", "grey")),
             legend = T, lg_y = 200, lg_x = 100,
             left_margin = 300, canvas_width = 1400, chr_length = 8, ch_gap = 6)
@@ -36,6 +37,7 @@ process chromomap {
       p <-  chromoMap("${chromosome}","${annotation}",
             data_based_color_map = T,
             data_type = "categorical",
+            segment_annotation = T, 
             data_colors = list(c("lightblue", "orange")),
             legend = T, lg_y = 200, lg_x = 100,
             left_margin = 300, canvas_width = 1400, chr_length = 8, ch_gap = 6)
@@ -52,6 +54,7 @@ process chromomap {
 
       p <-  chromoMap("${chromosome}","${annotation_busco_only}",
             data_type = "categorical",
+            segment_annotation = T,
             anno_col = c("lightblue"),
             left_margin = 300, canvas_width = 1400, chr_length = 8, ch_gap = 6)
 
