@@ -4,7 +4,7 @@ process parse_samtools {
   input:
     tuple val(name), file(annotation), file(fasta)
   output:
-	  tuple val(name), file("chromosome_file.txt"), file(annotation)
+	  tuple val(name), file("${name}_chromosome_file.txt"), file(annotation)
   shell:
     """
     contiglist=\$(< ${annotation} cut -f 2 | sort | uniq )
@@ -18,7 +18,7 @@ process parse_samtools {
       grep "\${contig}" ${fasta}.fai >> index.list
     done < <(echo "\${contiglist}")
 
-    cut -f1,2 index.list |  sed \$'s/\\\\t/\\\\t1\\\\t/' | sort -h -r -k 3  > chromosome_file.txt
+    cut -f1,2 index.list |  sed \$'s/\\\\t/\\\\t1\\\\t/' | sort -h -r -k 3  > ${name}_chromosome_file.txt
     """
 }
 

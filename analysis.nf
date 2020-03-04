@@ -235,7 +235,7 @@ workflow abricate_FASTA_wf {
 workflow abricate_FASTA_transposon_wf {
     take:   fasta_input_ch
     main:   mobile_database = Channel.fromPath( workflow.projectDir + "/data/IS.fna", checkIfExists: true )
-            abricate_transposon(fasta_input_ch, mobile_database)
+            abricate_transposon(fasta_input_ch.combine(mobile_database))
     emit:   abricate_transposon.out // used in plasmid_comparision_wf {}
 }
 

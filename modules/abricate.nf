@@ -31,8 +31,7 @@ process abricate_transposon {
     label 'abricate'
     publishDir "${params.output}/${name}", mode: 'copy', pattern: "*.tab"
   input:
-    tuple val(name), path(fasta) 
-    path(database)
+    tuple val(name), path(fasta), path(database)
   output:
 	  tuple val(name), path("*.tab")
   script:
