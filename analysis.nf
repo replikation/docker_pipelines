@@ -141,11 +141,13 @@ workflow centrifuge_database_wf {
     include abricate_compare as abricate_chromosomes from './modules/abricate'
     include abricate_compare as abricate_plasmids from './modules/abricate'
     include abricate_compare as abricate_unknown from './modules/abricate'
+    include abricate_transposon from './modules/abricate' 
     include baloonplot from './modules/PLOTS/baloonplot'
     include bwaUnmapped from './modules/bwaUnmapped' 
     include centrifuge from './modules/centrifuge' 
     include centrifuge_download_db from './modules/centrifugegetdatabase' 
     include centrifuge_illumina from './modules/centrifuge_illumina' 
+    include chromomap from './modules/PLOTS/chromomap'
     include dev from './modules/dev' 
     include downloadHuman from './modules/downloadHuman' 
     include fargene as fargene_chromosomes from './modules/fargene'
@@ -162,6 +164,8 @@ workflow centrifuge_database_wf {
     include metamaps from './modules/metamaps' 
     include nanoplot from './modules/nanoplot' 
     include overview_parser from './modules/PARSER/overview_parser'
+    include parse_plasmidinfo from './modules/PARSER/parse_plasmidinfo' 
+    include parse_samtools from './modules/PARSER/parse_samtools' 
     include plasflow from './modules/plasflow' 
     include plasflow_compare from './modules/plasflow' 
     include removeViaMapping from './modules/removeViaMapping' 
@@ -173,13 +177,9 @@ workflow centrifuge_database_wf {
     include sourmashclusterfasta from './modules/sourclusterfasta' 
     include sourmashmeta from './modules/sourmeta' 
     include toytree from './modules/toytree' 
-    include abricate_transposon from './modules/abricate' 
 
-    //new 
-    include chromomap from './modules/PLOTS/chromomap'
-    include parse_samtools from './modules/PARSER/parse_samtools' 
-    include parse_plasmidinfo from './modules/PARSER/parse_plasmidinfo' 
-
+    //new
+    include fargene_plasmid_screen from './modules/fargene'
 
 /************************** 
 * SUB WORKFLOWS
@@ -345,10 +345,19 @@ workflow plasmid_comparision_wf {
 
     // abricate
     method = ['ncbi', 'plasmidfinder']
+    hmm_method = ['class_a', 'class_b_1_2', 'class_b_3', 'class_c', 'class_d_1', 'class_d_2']
+
     abricate_plasmids(plasflow_compare.out.plasmids, method)      // *.abricate
     abricate_FASTA_transposon_wf(plasflow_compare.out.plasmids.map { it -> [it[0], it[3]] })  // *.tab
+    fargene_plasmid_screen(plasflow_compare.out.plasmids.map { it -> [it[0], it[3]] }, hmm_method) // *.fargene
 
-    group_by_sample = abricate_plasmids.out.groupTuple().join(abricate_FASTA_transposon_wf.out.groupTuple())
+    // get fargene contigs and annotate them !
+    // prokka(samtools(fargene_plasmid_screen.out.groupTuple()))
+
+    group_by_sample = abricate_plasmids.out.groupTuple()
+                      .join(abricate_FASTA_transposon_wf.out.groupTuple())
+                      .join(fargene_plasmid_screen.out.groupTuple())
+                      //.join(prokka.out.groupTuple())
  
     chromomap(parse_samtools(parse_plasmidinfo(group_by_sample).join(fastas)))
 

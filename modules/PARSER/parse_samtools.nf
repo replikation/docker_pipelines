@@ -7,7 +7,7 @@ process parse_samtools {
 	  tuple val(name), file("${name}_chromosome_file.txt"), file(annotation)
   shell:
     """
-    contiglist=\$(< ${annotation} cut -f 2 | sort | uniq )
+    contiglist=\$(cat ${annotation} | cut -f 2 | sort | uniq )
 
 
     # parse contig stats into chromosome_file
