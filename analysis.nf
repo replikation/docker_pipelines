@@ -180,6 +180,10 @@ workflow centrifuge_database_wf {
 
     //new
     include fargene_plasmid_screen from './modules/fargene'
+    include prokka from './modules/prokka' 
+    include parse_prokka from './modules/PARSER/parse_prokka'
+    include filter_fasta_by_length from './modules/filter_fasta_by_length'
+
 
 /************************** 
 * SUB WORKFLOWS
@@ -359,12 +363,26 @@ workflow plasmid_comparision_wf {
                       .join(fargene_plasmid_screen.out.groupTuple())
                       //.join(prokka.out.groupTuple())
  
-    chromomap(parse_samtools(parse_plasmidinfo(group_by_sample).join(fastas)))
-
-    
+    chromomap(parse_samtools(parse_plasmidinfo(group_by_sample).join(fastas)))  
 }
 
-// 46/482d98
+workflow plasmid_annotate_wf {
+  take: 
+    fastas    //val(name), path(file)
+  main:
+    filter_fasta_by_length(fastas)
+    input_ch_plasflow = filter_fasta_by_length.out
+                        .map { it -> tuple ( it[0], file(it[1]).getName(), it[1] ) }
+
+    plasflow_compare( input_ch_plasflow )
+    prokka(plasflow_compare.out.plasmids.map { it -> [it[0], it[3]] })      // *.abricate
+
+    group_by_sample = prokka.out.groupTuple()
+ 
+    chromomap(parse_samtools(parse_prokka(group_by_sample).join(fastas)))  
+}
+
+
 
 /************************** 
 * MAIN WORKFLOW
@@ -383,8 +401,9 @@ workflow {
     if (params.metamaps && params.fastq) { metamaps_wf(fastq_input_ch,metamaps_database_wf()) }
     if (params.nanoplot && params.fastq) { nanoplot_wf(fastq_input_ch) }   
     if (params.plasflow && params.fasta) { plasflow_wf(fasta_input_ch) }
-    if (params.res_compare && !params.plasmid_analysis && params.fasta) { resistance_comparision_wf(fasta_input_ch) }
-    if (!params.res_compare && params.plasmid_analysis && params.fasta) { plasmid_comparision_wf(fasta_input_ch) }
+    if (params.res_compare && params.fasta) { resistance_comparision_wf(fasta_input_ch) }
+    if (params.plasmid_analysis && params.fasta) { plasmid_comparision_wf(fasta_input_ch) }
+    if (params.plasmid_annotate && params.fasta) { plasmid_annotate_wf(fasta_input_ch) }
     if (params.sourclass && params.fasta) { sourmash_tax_classification_wf(fasta_input_ch, sourmash_database_wf()) }
     if (params.sourcluster && params.dir ) { sourmash_CLUSTERING_DIR_wf(dir_input_ch) }
     if (params.sourcluster && params.fasta) { sourmash_CLUSTERING_FASTA_wf(fasta_input_ch) }
@@ -423,6 +442,7 @@ def helpMSG() {
     ${c_blue} --abricate ${c_reset}          antibiotic and plasmid screening    ${c_green}[--fasta]${c_reset} or ${c_green}[--fastq]${c_reset}
     ${c_blue} --mobile ${c_reset}            screens for IS elements             ${c_green}[--fasta]${c_reset}
     ${c_blue} --res_compare ${c_reset}       detailed assembly resistance comparision of 2 or more assemblies ${c_green} [--fasta]${c_reset}
+    ${c_dim}  ..option flags:            [--coverage] include coverage info written in fasta headers on last position e.g. > name_cov_9.3354 ${c_reset}
     ${c_blue} --plasmid_analysis ${c_reset}  analysis of plasmids with plots     ${c_green}[--fasta]${c_reset}
 
     ${c_yellow}Cluster and Classifications:${c_reset} 

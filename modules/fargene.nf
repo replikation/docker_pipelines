@@ -1,6 +1,7 @@
 process fargene {
     label 'fargene'
     errorStrategy 'ignore'
+    validExitStatus 0,1
   input:
     tuple val(name), val(splitname), val(type), path(fasta) 
     each method
@@ -8,9 +9,11 @@ process fargene {
     path("${method}_${type}_${name}_*.fargene") 
   script:
     """
+    filename=\$(ls ${fasta})
     touch "${method}_${type}_${name}_\${PWD##*/}.fargene"
   	fargene -i ${fasta} --hmm-model ${method} -o ${name}_results 
-    cp ${name}_results/results_summary.txt  ${method}_${type}_${name}_\${PWD##*/}.fargene
+    cp ${name}_results/results_summary.txt  ${method}_${type}_${name}_\${PWD##*/}gencount.fargene
+    cat ${name}_results/hmmsearchresults/retrieved-genes-*-hmmsearched.out |  grep -v "^#" | sed -e s/"\${filename%.*}_"//g > ${method}_${type}_${name}_\${PWD##*/}coverage.fargene
     """
 }
 
