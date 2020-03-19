@@ -34,6 +34,9 @@ if (params.fasta && params.fastq) {
 if (params.fastq && params.metamaps && params.tax_db == '') {
     exit 1, "taxonomic database location not specified via [--tax_db]"}
 
+if (params.watchFast5 && !params.samplename ) {
+    exit 1, "please specify a sample name via [--samplename]"}
+
 // fasta input or via csv file
 if (params.fasta && params.list) { fasta_input_ch = Channel
         .fromPath( params.fasta, checkIfExists: true )
@@ -77,6 +80,14 @@ else if (params.fastqPair) { fastqPair_input_ch = Channel
         .fromFilePairs( params.fastqPair , checkIfExists: true )
         }
 
+// live folder watching
+
+if (params.watchFast5) { fast5_live_input_ch = Channel
+   .watchPath( params.watchFast5 + '*.fast5' )
+   .view()
+}
+
+if (params.samplename) { sample_name_ch = Channel.of ( params.samplename ) }
 
 /************************** 
 * DATABASES
@@ -153,8 +164,10 @@ workflow centrifuge_database_wf {
     include fargene as fargene_chromosomes from './modules/fargene'
     include fargene as fargene_plasmids from './modules/fargene'
     include fargene as fargene_unknown from './modules/fargene'
+    include fargene_plasmid_screen from './modules/fargene'
     include fastqTofasta from './modules/fastqTofasta' 
     include fasttree from './modules/fasttree'
+    include filter_fasta_by_length from './modules/filter_fasta_by_length'
     include gtdbtk from './modules/gtdbtk' 
     include gtdbtk_download_db from './modules/gtdbtkgetdatabase'
     include guppy_gpu from './modules/guppy_gpu' 
@@ -165,9 +178,11 @@ workflow centrifuge_database_wf {
     include nanoplot from './modules/nanoplot' 
     include overview_parser from './modules/PARSER/overview_parser'
     include parse_plasmidinfo from './modules/PARSER/parse_plasmidinfo' 
+    include parse_prokka from './modules/PARSER/parse_prokka'
     include parse_samtools from './modules/PARSER/parse_samtools' 
     include plasflow from './modules/plasflow' 
     include plasflow_compare from './modules/plasflow' 
+    include prokka from './modules/prokka' 
     include removeViaMapping from './modules/removeViaMapping' 
     include rmetaplot from './modules/rmetaplot' 
     include sourclusterPlot from './modules/PLOTS/sourclusterPlot' 
@@ -178,11 +193,11 @@ workflow centrifuge_database_wf {
     include sourmashmeta from './modules/sourmeta' 
     include toytree from './modules/toytree' 
 
-    //new
-    include fargene_plasmid_screen from './modules/fargene'
-    include prokka from './modules/prokka' 
-    include parse_prokka from './modules/PARSER/parse_prokka'
-    include filter_fasta_by_length from './modules/filter_fasta_by_length'
+    // new
+    include live_guppy_gpu from './modules/guppy_gpu'
+    include minimap2 from './modules/minimap2'
+    include samtools from './modules/samtools'
+    include gviz from './modules/PLOTS/gviz'
 
 
 /************************** 
@@ -190,29 +205,29 @@ workflow centrifuge_database_wf {
 **************************/
 
 workflow centrifuge_wf {
-    take:    fastq_input_ch
+    take:   fastq_input_ch
             centrifuge_DB
     main:   centrifuge(fastq_input_ch,centrifuge_DB) 
 }
 
 workflow centrifuge_illumina_wf {
-    take:    fastqPair_input_ch
+    take:   fastqPair_input_ch
             centrifuge_DB
     main:   centrifuge_illumina(fastqPair_input_ch,centrifuge_DB) 
 }
 
 workflow guppy_gpu_wf {
-    take:    dir_input_ch
+    take:   dir_input_ch
     main:   guppy_gpu(dir_input_ch)
 }
 
 workflow deepHumanPathogen_wf {
-    take:    fastqPair_input_ch
+    take:   fastqPair_input_ch
     main:   removeViaMapping(bwaUnmapped(fastqPair_input_ch,downloadHuman()))
 }
    
 workflow nanoplot_wf {
-    take:    fastq_input_ch
+    take:   fastq_input_ch
     main:   nanoplot(fastq_input_ch)
 }
 
@@ -276,17 +291,17 @@ workflow sourmash_tax_classification_wf {
 workflow dev_build_centrifuge_DB_cloud_wf {
     main:       
     //repeater = ['8', '16', '24', '32', '40', '48']
-    databasefile = file("gs://databases-nextflow/databases/thinspace/4centrifuge.tar.gz")
-    dev(databasefile)
+        databasefile = file("gs://databases-nextflow/databases/thinspace/4centrifuge.tar.gz")
+        dev(databasefile)
 }
 
 workflow sourmash_CLUSTERING_FASTA_wf {
-    take:    fasta_input_ch
+    take:   fasta_input_ch
     main:   sourmashclusterfasta(fasta_input_ch)
 }
 
 workflow sourmash_CLUSTERING_DIR_wf {
-    take:    fastq_input_ch
+    take:   fastq_input_ch
     main:   sourmashclusterdir(dir_input_ch)
             sourclusterPlot(sourmashclusterdir.out[1])
 }
@@ -366,20 +381,43 @@ workflow plasmid_comparision_wf {
     chromomap(parse_samtools(parse_plasmidinfo(group_by_sample).join(fastas)))  
 }
 
+/************************** 
+* Work in Progress section
+**************************/
+
 workflow plasmid_annotate_wf {
-  take: 
-    fastas    //val(name), path(file)
-  main:
-    filter_fasta_by_length(fastas)
-    input_ch_plasflow = filter_fasta_by_length.out
-                        .map { it -> tuple ( it[0], file(it[1]).getName(), it[1] ) }
+    take: 
+        fastas    //val(name), path(file)
+    main:
+        filter_fasta_by_length(fastas)
+        input_ch_plasflow = filter_fasta_by_length.out
+                            .map { it -> tuple ( it[0], file(it[1]).getName(), it[1] ) }
 
-    plasflow_compare( input_ch_plasflow )
-    prokka(plasflow_compare.out.plasmids.map { it -> [it[0], it[3]] })      // *.abricate
+        plasflow_compare( input_ch_plasflow )
+        prokka(plasflow_compare.out.plasmids.map { it -> [it[0], it[3]] })      // *.abricate
 
-    group_by_sample = prokka.out.groupTuple()
- 
-    chromomap(parse_samtools(parse_prokka(group_by_sample).join(fastas)))  
+        group_by_sample = prokka.out.groupTuple()
+    
+        chromomap(parse_samtools(parse_prokka(group_by_sample).join(fastas)))  
+}
+
+workflow live_analysis_wf {
+    take: 
+        sample_name
+        fast5_files
+        reference_fasta
+    main:
+        
+        live_guppy_gpu(sample_name.combine(fast5_files))
+        
+        //gviz(
+            samtools(
+                minimap2(
+                    live_guppy_gpu.out.combine(reference_fasta.map { it -> it[1]})
+        )) //)
+
+    emit:
+    live_guppy_gpu.out
 }
 
 
@@ -391,7 +429,6 @@ workflow plasmid_annotate_wf {
 workflow {
     if (params.abricate && params.fasta) { abricate_FASTA_wf(fasta_input_ch) }
     if (params.abricate && params.fastq) { abricate_FASTQ_wf(fastq_input_ch) }
-    if (params.mobile && params.fasta) { abricate_FASTA_transposon_wf(fasta_input_ch) }
     if (params.centrifuge && params.fastq) { centrifuge_wf(fastq_input_ch, centrifuge_database_wf()) }
     if (params.centrifuge && params.fastqPair) { centrifuge_illumina_wf(fastqPair_input_ch, centrifuge_database_wf()) }
     if (params.deepHumanPathogen && params.fastqPair) { deepHumanPathogen_wf(fastqPair_input_ch)}
@@ -399,11 +436,12 @@ workflow {
     if (params.gtdbtk && params.dir) { gtdbtk_wf(dir_input_ch,gtdbtk_database_wf()) }
     if (params.guppygpu && params.dir) { guppy_gpu_wf(dir_input_ch) }
     if (params.metamaps && params.fastq) { metamaps_wf(fastq_input_ch,metamaps_database_wf()) }
+    if (params.mobile && params.fasta) { abricate_FASTA_transposon_wf(fasta_input_ch) }
     if (params.nanoplot && params.fastq) { nanoplot_wf(fastq_input_ch) }   
     if (params.plasflow && params.fasta) { plasflow_wf(fasta_input_ch) }
-    if (params.res_compare && params.fasta) { resistance_comparision_wf(fasta_input_ch) }
     if (params.plasmid_analysis && params.fasta) { plasmid_comparision_wf(fasta_input_ch) }
     if (params.plasmid_annotate && params.fasta) { plasmid_annotate_wf(fasta_input_ch) }
+    if (params.res_compare && params.fasta) { resistance_comparision_wf(fasta_input_ch) }
     if (params.sourclass && params.fasta) { sourmash_tax_classification_wf(fasta_input_ch, sourmash_database_wf()) }
     if (params.sourcluster && params.dir ) { sourmash_CLUSTERING_DIR_wf(dir_input_ch) }
     if (params.sourcluster && params.fasta) { sourmash_CLUSTERING_FASTA_wf(fasta_input_ch) }
@@ -411,7 +449,10 @@ workflow {
     if (params.sourmeta && params.fastq) { sourmash_WIMP_FASTQ_wf(fastq_input_ch, sourmash_database_wf()) }
     if (params.tree_aa && params.dir && !params.fasta) { amino_acid_tree_wf(dir_input_ch) }
     if (params.tree_aa && params.dir && params.fasta) { amino_acid_tree_supp_wf(dir_input_ch, fasta_input_ch) }
-  
+
+    // live workflows
+    if (params.watchFast5 && params.samplename && params.fasta) { live_analysis_wf(sample_name_ch, fast5_live_input_ch, fasta_input_ch) }
+    //if (params.dir_input_ch && params.samplename && params.fasta) { live_analysis_wf(sample_name_ch, fast5_live_input_ch, fasta_input_ch) }
 }
 
 /*************  
