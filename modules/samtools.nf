@@ -1,4 +1,3 @@
-
 process samtools {
   label 'samtools'
   publishDir "${params.output}/", mode: 'copy'
