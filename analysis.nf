@@ -143,7 +143,6 @@ workflow centrifuge_database_wf {
 /************************** 
 * MODULES
 **************************/
-    include artic from './modules/artic' 
     include abricate from './modules/abricate' 
     include abricateBatch from './modules/abricateBatch'
     include abricateParser from './modules/PARSER/abricateParser' 
@@ -464,7 +463,6 @@ workflow {
     if (params.tree_aa && params.dir && !params.fasta) { amino_acid_tree_wf(dir_input_ch) }
     if (params.tree_aa && params.dir && params.fasta) { amino_acid_tree_supp_wf(dir_input_ch, fasta_input_ch) }
     if (params.assembly_ont && params.fastq) { assembly_ont_wf(fastq_input_ch) }
-    if (params.artic_ncov19 && params.fastq) { artic_nCov19_wf(fastq_input_ch) }
 
     // live workflows
     if (params.watchFast5 && params.samplename && params.fasta) { live_analysis_wf(sample_name_ch, fast5_live_input_ch, fasta_input_ch) }
