@@ -511,6 +511,11 @@ def helpMSG() {
       ..default config type:     [--configtype $params.configtype]  ${c_reset}
     ${c_blue} --nanoplot  ${c_reset}         read quality via nanoplot           ${c_green}[--fastq]${c_reset}
 
+    ${c_yellow}Nanopore Live analysis **WIP**${c_reset}
+    [--watchFast5]          directory where fast5 files appear ${c_green} [--watchFast5 fast5/]${c_reset}
+    [--samplename]          name of your sample ${c_green} [--samplename "E.coli"]${c_reset}
+    [--fasta]               reference multi fastas file to screen your reads against  [--fasta some_genomes.fasta]${c_reset}
+
     ${c_yellow}Other Workflows:${c_reset}
     ${c_blue} --deepHumanPathogen ${c_reset} pathogen identification in human  ${c_green}  [--fastqPair '*_R{1,2}.fastq.gz']${c_reset}    
     ${c_blue} --plasflow ${c_reset}          predicts & seperates plasmid-seqs${c_green}   [--fasta]${c_reset}

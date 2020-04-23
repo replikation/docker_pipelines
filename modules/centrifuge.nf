@@ -26,7 +26,7 @@ process centrifuge {
       centrifuge -p !{task.cpus} -x \${DBname} -k 5 --min-hitlen 16 \
       -U !{fastq} -S centrifuge_results.out --report-file centrifuge_out.log
 
-      filter-reads-ont.sh
+      filter_centrifuge-hits.sh
 
       centrifuge-kreport -x \${DBname} --min-score 300 --min-length 500 centrifuge_filtered.out \
       > !{name}_pavian_report_filtered.csv
