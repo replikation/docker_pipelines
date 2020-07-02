@@ -11,10 +11,14 @@ process minimap2 {
     """
 }
 
-
-
-/*
-process minimap2_to_bam introduces a Math.random() function to add a random long number to the output.
-This is introduced as a quick fix, because otherweise we create to much files of the same name which will be a issue in
-the process later on when we use all of them together (differential binning)
-*/
+process minimap2_polish {
+  label 'minimap2'
+      input:
+  	    tuple val(name), file(read), file(assembly) 
+      output:
+        tuple val(name), file(read), file(assembly), file("${name}.paf") 
+      script:
+        """
+      	minimap2 -x map-ont -t ${task.cpus} ${assembly} ${read} > ${name}.paf
+        """
+}

@@ -25,6 +25,25 @@ println "\033[2mCPUs to use: $params.cores"
 println "Output dir name: $params.output\u001B[0m"
 println " "}
 
+/************* 
+* ERROR HANDLING
+*************/
+// profiles
+if ( workflow.profile == 'standard' ) { exit 1, "NO VALID EXECUTION PROFILE SELECTED, use e.g. [-profile local,docker]" }
+
+if (
+    workflow.profile.contains('singularity') ||
+    workflow.profile.contains('docker')
+    ) { "engine selected" }
+else { exit 1, "No engine selected:  -profile EXECUTER,ENGINE" }
+
+if (
+    workflow.profile.contains('local') ||
+    workflow.profile.contains('git_action')
+    ) { "executer selected" }
+else { exit 1, "No executer selected:  -profile EXECUTER,ENGINE" }
+
+// params tests
 if (params.profile) {
     exit 1, "--profile is WRONG use -profile" }
 if (!params.fasta &&  !params.fastq &&  !params.dir && !params.fastqPair && !params.dev) {
@@ -168,13 +187,20 @@ workflow centrifuge_database_wf {
     include fastqTofasta from './modules/fastqTofasta' 
     include fasttree from './modules/fasttree'
     include filter_fasta_by_length from './modules/filter_fasta_by_length'
+    include flye from './modules/flye'
+    include racon from './modules/racon' 
+    include medaka from './modules/medaka' 
+    include minimap2_polish from './modules/minimap2' 
     include gtdbtk from './modules/gtdbtk' 
     include gtdbtk_download_db from './modules/gtdbtkgetdatabase'
     include guppy_gpu from './modules/guppy_gpu' 
+    include gviz from './modules/PLOTS/gviz'
     include krona from './modules/krona' 
+    include live_guppy_gpu from './modules/guppy_gpu'
     include mafft from './modules/mafft'
     include mafft_supp from './modules/mafft_supp'
     include metamaps from './modules/metamaps' 
+    include minimap2 from './modules/minimap2'
     include nanoplot from './modules/nanoplot' 
     include overview_parser from './modules/PARSER/overview_parser'
     include parse_plasmidinfo from './modules/PARSER/parse_plasmidinfo' 
@@ -185,20 +211,15 @@ workflow centrifuge_database_wf {
     include prokka from './modules/prokka' 
     include removeViaMapping from './modules/removeViaMapping' 
     include rmetaplot from './modules/rmetaplot' 
+    include samtools from './modules/samtools'
     include sourclusterPlot from './modules/PLOTS/sourclusterPlot' 
     include sourmash_download_db from './modules/sourmashgetdatabase'
     include sourmashclassification from './modules/sourclass' 
     include sourmashclusterdir from './modules/sourclusterdir' 
     include sourmashclusterfasta from './modules/sourclusterfasta' 
     include sourmashmeta from './modules/sourmeta' 
-    include toytree from './modules/toytree' 
-
-    // new
-    include live_guppy_gpu from './modules/guppy_gpu'
-    include minimap2 from './modules/minimap2'
-    include samtools from './modules/samtools'
-    include gviz from './modules/PLOTS/gviz'
-
+    include toytree from './modules/toytree'
+    include filter_fastq_by_length from './modules/filter_fastq_by_length'
 
 /************************** 
 * SUB WORKFLOWS
@@ -381,10 +402,18 @@ workflow plasmid_comparision_wf {
     chromomap(parse_samtools(parse_plasmidinfo(group_by_sample).join(fastas)))  
 }
 
+workflow assembly_ont_wf {
+    take:   fastq
+    main:   medaka(racon(minimap2_polish(flye(fastq))))
+    emit:   medaka.out
+}
+
+
 /************************** 
 * Work in Progress section
 **************************/
-
+// Not sure about this one: its mainly implemented in the other workflow
+// prokka is hard to parse here
 workflow plasmid_annotate_wf {
     take: 
         fastas    //val(name), path(file)
@@ -401,6 +430,9 @@ workflow plasmid_annotate_wf {
         chromomap(parse_samtools(parse_prokka(group_by_sample).join(fastas)))  
 }
 
+// TODO: fastq files are not correctly stored, its just one - some "overwrite" bug i guess??
+// could be that my links have the wrong name or so ?
+// txt was working so you could add the PWD hast
 workflow live_analysis_wf {
     take: 
         sample_name
@@ -449,6 +481,7 @@ workflow {
     if (params.sourmeta && params.fastq) { sourmash_WIMP_FASTQ_wf(fastq_input_ch, sourmash_database_wf()) }
     if (params.tree_aa && params.dir && !params.fasta) { amino_acid_tree_wf(dir_input_ch) }
     if (params.tree_aa && params.dir && params.fasta) { amino_acid_tree_supp_wf(dir_input_ch, fasta_input_ch) }
+    if (params.assembly_ont && params.fastq) { assembly_ont_wf(fastq_input_ch) }
 
     // live workflows
     if (params.watchFast5 && params.samplename && params.fasta) { live_analysis_wf(sample_name_ch, fast5_live_input_ch, fasta_input_ch) }
@@ -483,7 +516,7 @@ def helpMSG() {
     ${c_blue} --abricate ${c_reset}          antibiotic and plasmid screening    ${c_green}[--fasta]${c_reset} or ${c_green}[--fastq]${c_reset}
     ${c_blue} --mobile ${c_reset}            screens for IS elements             ${c_green}[--fasta]${c_reset}
     ${c_blue} --res_compare ${c_reset}       detailed assembly resistance comparision of 2 or more assemblies ${c_green} [--fasta]${c_reset}
-    ${c_dim}  ..option flags:            [--coverage] include coverage info written in fasta headers on last position e.g. > name_cov_9.3354 ${c_reset}
+    ${c_dim}  ..option flags:            [--coverage] use coverage info in fasta headers on last position e.g. > name_cov_9.3354 ${c_reset}
     ${c_blue} --plasmid_analysis ${c_reset}  analysis of plasmids with plots     ${c_green}[--fasta]${c_reset}
 
     ${c_yellow}Cluster and Classifications:${c_reset} 
@@ -498,18 +531,24 @@ def helpMSG() {
     ${c_dim}  ..option flags:            [--gtdbtk_db] path to your own DB instead ${c_reset}
 
     ${c_yellow}Metagenomic Workflows:${c_reset}
-    ${c_blue} --centrifuge ${c_reset}        metagenomic classification of reads${c_green} [--fastq]${c_reset} or ${c_green}[--fastqPair]${c_reset}
+    ${c_blue} --centrifuge ${c_reset}        metagenomic classification of reads ${c_green}[--fastq]${c_reset} or ${c_green}[--fastqPair]${c_reset}
     ${c_dim}  ..option flags:            [--centrifuge_db] path to your own DB instead, either .tar or .tar.gz ${c_reset}
-    ${c_blue} --metamaps ${c_reset}          metagenomic class. of long reads   ${c_green} [--fastq]${c_reset}
+    ${c_blue} --metamaps ${c_reset}          metagenomic class. of long reads    ${c_green}[--fastq]${c_reset}
     ${c_dim}  ..mandatory flags:         [--memory] [--tax_db] e.g. --memory 100 --tax_db /databases/miniSeq+H 
 
     ${c_yellow}Nanopore specific Workflows:${c_reset}
     ${c_blue} --guppygpu ${c_reset}          basecalling via guppy-gpu-nvidia   ${c_green} [--dir]${c_reset}
     ${c_dim}  ..option flags:            [--flowcell] [--kit] [--barcode] [--modbase]
-      ..default settings:        [--flowcell $params.flowcell] [--kit $params.kit] [--modbase FALSE] ${c_reset}
+        ..default settings:        [--flowcell $params.flowcell] [--kit $params.kit] [--modbase FALSE] ${c_reset}
     ${c_dim}  ..config files:            turn on via [--config], modify config type via [--configtype] 
-      ..default config type:     [--configtype $params.configtype]  ${c_reset}
+        ..default config type:     [--configtype $params.configtype]  ${c_reset}
     ${c_blue} --nanoplot  ${c_reset}         read quality via nanoplot           ${c_green}[--fastq]${c_reset}
+    ${c_blue} --assembly_ont ${c_reset}      simple nanopore assembly            ${c_green}[--fastq]${c_reset}
+    ${c_dim}  ..option flags:            [--gsize ${params.gsize}] [--model ${params.model}] [--overlap ${params.overlap}]
+
+    ${c_yellow}Nanopore live analysis Workflows (WIP):${c_reset}
+    ${c_blue} --watchFast5 ${c_reset}    watch a dir for fast5 files, basecall them and map against reference
+                      Needs: ${c_green}[--samplename]${c_reset} and one multifasta file via ${c_green}[--fasta]${c_reset}
 
     ${c_yellow}Nanopore Live analysis **WIP**${c_reset}
     [--watchFast5]          directory where fast5 files appear ${c_green} [--watchFast5 fast5/]${c_reset}
@@ -517,11 +556,12 @@ def helpMSG() {
     [--fasta]               reference multi fastas file to screen your reads against  [--fasta some_genomes.fasta]${c_reset}
 
     ${c_yellow}Other Workflows:${c_reset}
-    ${c_blue} --deepHumanPathogen ${c_reset} pathogen identification in human  ${c_green}  [--fastqPair '*_R{1,2}.fastq.gz']${c_reset}    
-    ${c_blue} --plasflow ${c_reset}          predicts & seperates plasmid-seqs${c_green}   [--fasta]${c_reset}
-    ${c_blue} --tree_aa ${c_reset}           build a aminoacid tree of a dir with aa seqs  ${c_green}[--dir]${c_reset}
-    ${c_dim}  ..option flags:            [--filenames] use filenames as labels instead of contig names${c_reset}
-                                         [--fasta] add one multi protein file as "tree enhancer"e.g. [--fasta multipleProteins.aa]${c_reset}
+    ${c_blue} --deepHumanPathogen ${c_reset} pathogen identification in human    ${c_green}[--fastqPair '*_R{1,2}.fastq.gz']${c_reset}    
+    ${c_blue} --plasflow ${c_reset}          predicts & seperates plasmid-seqs   ${c_green}[--fasta]${c_reset}
+    ${c_blue} --tree_aa ${c_reset}           aminoacid tree of a dir with aa seq ${c_green}[--dir]${c_reset}
+    ${c_dim}  ..option flags:            [--filenames] use filenames as labels instead of contig names
+    ${c_dim}                             [--fasta] add one multi protein file as "tree enhancer" 
+    ${c_dim}                               e.g. [--fasta multipleProteins.aa]${c_reset}
 
     ${c_reset}Options:
     --cores             max cores for local use [default: $params.cores]
