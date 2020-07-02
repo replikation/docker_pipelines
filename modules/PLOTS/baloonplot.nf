@@ -4,7 +4,8 @@ process baloonplot {
   input:
     path(csv) 
   output:
-	  path("overview.svg") 
+	  path("overview.svg")
+    path("overview.pdf") 
   script:
   if (params.coverage)
     """

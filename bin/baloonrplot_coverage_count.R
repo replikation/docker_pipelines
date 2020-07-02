@@ -54,3 +54,7 @@ plot <- ggplot(balloon_melted, aes(x = variable, y = type)) +
 svg("overview.svg", height = sizeh, width = sizew)
 print(plot)
 dev.off()
+
+pdf("overview.pdf", height = sizeh, width = sizew)
+print(plot)
+dev.off()

@@ -49,3 +49,6 @@ svg("overview.svg", height = sizeh, width = sizew)
 print(plot)
 dev.off()
 
+pdf("overview.pdf", height = sizeh, width = sizew)
+print(plot)
+dev.off()
