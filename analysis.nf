@@ -567,6 +567,7 @@ def helpMSG() {
     --cores             max cores for local use [default: $params.cores]
     --memory            80% of available RAM in GB for --metamaps [default: $params.memory]
     --output            name of the result folder [default: $params.output]
+    --workdir           location of temporaty files [default: $params.workdir]
 
     ${c_reset}Database(s) behaviour${c_reset}
     The Priority is:
