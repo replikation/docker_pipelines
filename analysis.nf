@@ -29,19 +29,7 @@ println " "}
 * ERROR HANDLING
 *************/
 // profiles
-if ( workflow.profile == 'standard' ) { exit 1, "NO VALID EXECUTION PROFILE SELECTED, use e.g. [-profile local,docker]" }
-
-if (
-    workflow.profile.contains('singularity') ||
-    workflow.profile.contains('docker')
-    ) { "engine selected" }
-else { exit 1, "No engine selected:  -profile EXECUTER,ENGINE" }
-
-if (
-    workflow.profile.contains('local') ||
-    workflow.profile.contains('git_action')
-    ) { "executer selected" }
-else { exit 1, "No executer selected:  -profile EXECUTER,ENGINE" }
+if ( workflow.profile == 'standard' ) { "Using default profile [-profile local,docker]" }
 
 // params tests
 if (params.profile) {
@@ -116,7 +104,7 @@ workflow sourmash_database_wf {
         if (params.sour_db) { database_sourmash = file(params.sour_db) }
 
         else if (workflow.profile == 'gcloud' && (params.sourmeta || params.sourclass)) {
-                sour_db_preload = file("gs://databases-nextflow/databases/sourmash/gtdb.lca.json")    
+                sour_db_preload = file("${params.database}/sourmash/gtdb.lca.json")    
             if (sour_db_preload.exists()) { database_sourmash = sour_db_preload }
             else {  sourmash_download_db() 
                     database_sourmash = sourmash_download_db.out } }
@@ -137,7 +125,7 @@ workflow gtdbtk_database_wf {
     main:
         if (params.gtdbtk_db) { database_gtdbtk = file(params.gtdbtk_db) }
         else if (workflow.profile == 'gcloud' && params.gtdbtk) {
-                gtdbtk_preload = file("gs://databases-nextflow/databases/gtdbtk/gtdbtk_r89_data.tar.gz")    
+                gtdbtk_preload = file("${params.database}/gtdbtk/gtdbtk_r89_data.tar.gz")    
             if (gtdbtk_preload.exists()) { database_gtdbtk = gtdbtk_preload }
             else {  gtdbtk_download_db() 
                     database_gtdbtk = gtdbtk_download_db.out } }
@@ -152,7 +140,7 @@ workflow centrifuge_database_wf {
         if (params.centrifuge_db) { database_centrifuge = file( params.centrifuge_db ) }
         else if (!params.cloudProcess) { centrifuge_download_db() ; database_centrifuge = centrifuge_download_db.out}
         else if (params.cloudProcess) { 
-            centrifuge_preload = file("gs://databases-nextflow/databases/centrifuge/gtdb_r89_54k_centrifuge.tar")
+            centrifuge_preload = file("${params.database}/centrifuge/gtdb_r89_54k_centrifuge.tar")
             if (centrifuge_preload.exists()) { database_centrifuge = centrifuge_preload }   
             else  { centrifuge_download_db()  ; database_centrifuge = centrifuge_download_db.out }
         }
@@ -187,10 +175,8 @@ workflow centrifuge_database_wf {
     include fastqTofasta from './modules/fastqTofasta' 
     include fasttree from './modules/fasttree'
     include filter_fasta_by_length from './modules/filter_fasta_by_length'
+    include filter_fastq_by_length from './modules/filter_fastq_by_length'
     include flye from './modules/flye'
-    include racon from './modules/racon' 
-    include medaka from './modules/medaka' 
-    include minimap2_polish from './modules/minimap2' 
     include gtdbtk from './modules/gtdbtk' 
     include gtdbtk_download_db from './modules/gtdbtkgetdatabase'
     include guppy_gpu from './modules/guppy_gpu' 
@@ -199,8 +185,10 @@ workflow centrifuge_database_wf {
     include live_guppy_gpu from './modules/guppy_gpu'
     include mafft from './modules/mafft'
     include mafft_supp from './modules/mafft_supp'
+    include medaka from './modules/medaka' 
     include metamaps from './modules/metamaps' 
     include minimap2 from './modules/minimap2'
+    include minimap2_polish from './modules/minimap2' 
     include nanoplot from './modules/nanoplot' 
     include overview_parser from './modules/PARSER/overview_parser'
     include parse_plasmidinfo from './modules/PARSER/parse_plasmidinfo' 
@@ -209,6 +197,7 @@ workflow centrifuge_database_wf {
     include plasflow from './modules/plasflow' 
     include plasflow_compare from './modules/plasflow' 
     include prokka from './modules/prokka' 
+    include racon from './modules/racon' 
     include removeViaMapping from './modules/removeViaMapping' 
     include rmetaplot from './modules/rmetaplot' 
     include samtools from './modules/samtools'
@@ -219,7 +208,6 @@ workflow centrifuge_database_wf {
     include sourmashclusterfasta from './modules/sourclusterfasta' 
     include sourmashmeta from './modules/sourmeta' 
     include toytree from './modules/toytree'
-    include filter_fastq_by_length from './modules/filter_fastq_by_length'
 
 /************************** 
 * SUB WORKFLOWS
