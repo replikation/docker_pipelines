@@ -5,4 +5,4 @@ SCORE=$2    # 150
 LENGTH=$3   # 250
 OUTPUT=$4   
 
-< $INPUT awk "{if(NR < 2 || $4 >= $LENGTH) {print}}" | awk "{if(NR < 2 || $6 >= $SCORE) {print}}" > $OUTPUT
+< $INPUT awk -v a="$LENGTH" '{if(NR < 2 || $4 >= a) {print}}' | awk -v b="$SCORE" '{if(NR < 2 || $6 >= b) {print}}' > $OUTPUT

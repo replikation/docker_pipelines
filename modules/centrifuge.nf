@@ -35,7 +35,7 @@ process centrifuge {
         filter_centrifuge_hits.sh ${name}_centrifuge_unfiltered.out 150 250 ${name}_centrifuge_filtered.out
 
       # reports
-        centrifuge-kreport -x \${DBname} --min-score 300 --min-length 500 centrifuge_filtered.out \
+        centrifuge-kreport -x \${DBname} --min-score 300 --min-length 500 ${name}_centrifuge_filtered.out \
         > ${name}_pavian_report_filtered.csv
 
         centrifuge-kreport -x \${DBname} --min-score 300 --min-length 500 ${name}_centrifuge_unfiltered.out \

@@ -1,5 +1,5 @@
 process centrifuge_download_db {
-        if (workflow.profile == 'gcloud') { publishDir "${params.database}/centrifuge", mode: 'copy', pattern: "gtdb_r89_54k_centrifuge.tar"}
+        if (params.cloudProcess) { publishDir "${params.database}/centrifuge", mode: 'copy', pattern: "gtdb_r89_54k_centrifuge.tar"}
         else { storeDir "${params.database}/centrifuge" } 
         label 'ubuntu'    
       output:
