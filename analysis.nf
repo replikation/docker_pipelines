@@ -1,5 +1,5 @@
 #!/usr/bin/env nextflow
-nextflow.preview.dsl=2
+nextflow.enable.dsl=2
 
 /*
 * Nextflow -- Analysis Pipeline
@@ -150,64 +150,65 @@ workflow centrifuge_database_wf {
 /************************** 
 * MODULES
 **************************/
-    include abricate from './modules/abricate' 
-    include abricateBatch from './modules/abricateBatch'
-    include abricateParser from './modules/PARSER/abricateParser' 
-    include abricateParserFASTA from './modules/PARSER/abricateParserFASTA'
-    include abricatePlot from './modules/PLOTS/abricatePlot'
-    include abricatePlotFASTA from './modules/PLOTS/abricatePlotFASTA' 
-    include abricate_compare as abricate_chromosomes from './modules/abricate'
-    include abricate_compare as abricate_plasmids from './modules/abricate'
-    include abricate_compare as abricate_unknown from './modules/abricate'
-    include abricate_transposon from './modules/abricate' 
-    include baloonplot from './modules/PLOTS/baloonplot'
-    include bwaUnmapped from './modules/bwaUnmapped' 
-    include centrifuge from './modules/centrifuge' 
-    include centrifuge_download_db from './modules/centrifugegetdatabase' 
-    include centrifuge_illumina from './modules/centrifuge_illumina' 
-    include chromomap from './modules/PLOTS/chromomap'
-    include dev from './modules/dev' 
-    include downloadHuman from './modules/downloadHuman' 
-    include fargene as fargene_chromosomes from './modules/fargene'
-    include fargene as fargene_plasmids from './modules/fargene'
-    include fargene as fargene_unknown from './modules/fargene'
-    include fargene_plasmid_screen from './modules/fargene'
-    include fastqTofasta from './modules/fastqTofasta' 
-    include fasttree from './modules/fasttree'
-    include filter_fasta_by_length from './modules/filter_fasta_by_length'
-    include filter_fastq_by_length from './modules/filter_fastq_by_length'
-    include flye from './modules/flye'
-    include gtdbtk from './modules/gtdbtk' 
-    include gtdbtk_download_db from './modules/gtdbtkgetdatabase'
-    include guppy_gpu from './modules/guppy_gpu' 
-    include gviz from './modules/PLOTS/gviz'
-    include krona from './modules/krona' 
-    include live_guppy_gpu from './modules/guppy_gpu'
-    include mafft from './modules/mafft'
-    include mafft_supp from './modules/mafft_supp'
-    include medaka from './modules/medaka' 
-    include metamaps from './modules/metamaps' 
-    include minimap2 from './modules/minimap2'
-    include minimap2_polish from './modules/minimap2' 
-    include nanoplot from './modules/nanoplot' 
-    include overview_parser from './modules/PARSER/overview_parser'
-    include parse_plasmidinfo from './modules/PARSER/parse_plasmidinfo' 
-    include parse_prokka from './modules/PARSER/parse_prokka'
-    include parse_samtools from './modules/PARSER/parse_samtools' 
-    include plasflow from './modules/plasflow' 
-    include plasflow_compare from './modules/plasflow' 
-    include prokka from './modules/prokka' 
-    include racon from './modules/racon' 
-    include removeViaMapping from './modules/removeViaMapping' 
-    include rmetaplot from './modules/rmetaplot' 
-    include samtools from './modules/samtools'
-    include sourclusterPlot from './modules/PLOTS/sourclusterPlot' 
-    include sourmash_download_db from './modules/sourmashgetdatabase'
-    include sourmashclassification from './modules/sourclass' 
-    include sourmashclusterdir from './modules/sourclusterdir' 
-    include sourmashclusterfasta from './modules/sourclusterfasta' 
-    include sourmashmeta from './modules/sourmeta' 
-    include toytree from './modules/toytree'
+    include { cluster } from './modules/cluster' 
+    include { abricate } from './modules/abricate' 
+    include { abricateBatch } from './modules/abricateBatch'
+    include { abricateParser } from './modules/PARSER/abricateParser' 
+    include { abricateParserFASTA } from './modules/PARSER/abricateParserFASTA'
+    include { abricatePlot } from './modules/PLOTS/abricatePlot'
+    include { abricatePlotFASTA } from './modules/PLOTS/abricatePlotFASTA' 
+    include { abricate_compare as abricate_chromosomes } from './modules/abricate'
+    include { abricate_compare as abricate_plasmids } from './modules/abricate'
+    include { abricate_compare as abricate_unknown } from './modules/abricate'
+    include { abricate_transposon } from './modules/abricate' 
+    include { baloonplot } from './modules/PLOTS/baloonplot'
+    include { bwaUnmapped } from './modules/bwaUnmapped' 
+    include { centrifuge } from './modules/centrifuge' 
+    include { centrifuge_download_db } from './modules/centrifugegetdatabase' 
+    include { centrifuge_illumina } from './modules/centrifuge_illumina' 
+    include { chromomap } from './modules/PLOTS/chromomap'
+    include { dev } from './modules/dev' 
+    include { downloadHuman } from './modules/downloadHuman' 
+    include { fargene as fargene_chromosomes } from './modules/fargene'
+    include { fargene as fargene_plasmids } from './modules/fargene'
+    include { fargene as fargene_unknown } from './modules/fargene'
+    include { fargene_plasmid_screen } from './modules/fargene'
+    include { fastqTofasta } from './modules/fastqTofasta' 
+    include { fasttree } from './modules/fasttree'
+    include { filter_fasta_by_length } from './modules/filter_fasta_by_length'
+    include { filter_fastq_by_length } from './modules/filter_fastq_by_length'
+    include { flye } from './modules/flye'
+    include { gtdbtk } from './modules/gtdbtk' 
+    include { gtdbtk_download_db } from './modules/gtdbtkgetdatabase'
+    include { guppy_gpu } from './modules/guppy_gpu' 
+    include { gviz } from './modules/PLOTS/gviz'
+    include { krona } from './modules/krona' 
+    include { live_guppy_gpu } from './modules/guppy_gpu'
+    include { mafft } from './modules/mafft'
+    include { mafft_supp } from './modules/mafft_supp'
+    include { medaka } from './modules/medaka' 
+    include { metamaps } from './modules/metamaps' 
+    include { minimap2 } from './modules/minimap2'
+    include { minimap2_polish } from './modules/minimap2' 
+    include { nanoplot } from './modules/nanoplot' 
+    include { overview_parser } from './modules/PARSER/overview_parser'
+    include { parse_plasmidinfo } from './modules/PARSER/parse_plasmidinfo' 
+    include { parse_prokka } from './modules/PARSER/parse_prokka'
+    include { parse_samtools } from './modules/PARSER/parse_samtools' 
+    include { plasflow } from './modules/plasflow' 
+    include { plasflow_compare } from './modules/plasflow' 
+    include { prokka } from './modules/prokka' 
+    include { racon } from './modules/racon' 
+    include { removeViaMapping } from './modules/removeViaMapping' 
+    include { rmetaplot } from './modules/rmetaplot' 
+    include { samtools } from './modules/samtools'
+    include { sourclusterPlot } from './modules/PLOTS/sourclusterPlot' 
+    include { sourmash_download_db } from './modules/sourmashgetdatabase'
+    include { sourmashclassification } from './modules/sourclass' 
+    include { sourmashclusterdir } from './modules/sourclusterdir' 
+    include { sourmashclusterfasta } from './modules/sourclusterfasta' 
+    include { sourmashmeta } from './modules/sourmeta' 
+    include { toytree } from './modules/toytree'
 
 /************************** 
 * SUB WORKFLOWS
@@ -396,6 +397,11 @@ workflow assembly_ont_wf {
     emit:   medaka.out
 }
 
+workflow cluster_get_representatives_wf { 
+    take:   fasta
+    main:   cluster(fasta)
+    emit:   cluster.out
+}
 
 /************************** 
 * Work in Progress section
@@ -459,7 +465,7 @@ workflow {
     if (params.mobile && params.fasta) { abricate_FASTA_transposon_wf(fasta_input_ch) }
     if (params.nanoplot && params.fastq) { nanoplot_wf(fastq_input_ch) }   
     if (params.plasflow && params.fasta) { plasflow_wf(fasta_input_ch) }
-    if (params.plasmid_analysis && params.fasta) { plasmid_comparision_wf(fasta_input_ch) }
+    if (params.plasmid_analysis && params.fasta) { plasmid_comparision_wf(cluster_get_representatives_wf(fasta_input_ch)) }
     if (params.plasmid_annotate && params.fasta) { plasmid_annotate_wf(fasta_input_ch) }
     if (params.res_compare && params.fasta) { resistance_comparision_wf(fasta_input_ch) }
     if (params.sourclass && params.fasta) { sourmash_tax_classification_wf(fasta_input_ch, sourmash_database_wf()) }

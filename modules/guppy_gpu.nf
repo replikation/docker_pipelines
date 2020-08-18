@@ -1,7 +1,7 @@
 process guppy_gpu {
       echo true
       maxForks 1
-      container = 'nanozoo/guppy_gpu:3.6.0-1--440bed1'
+      container = 'nanozoo/guppy_gpu:4.0.11-1--52ff62d'
       containerOptions '--gpus all'
       publishDir "${params.output}/${name}/", mode: 'copy', pattern: "fastq_${params.output}"
     input:
@@ -32,7 +32,7 @@ process guppy_gpu {
 
 process live_guppy_gpu {
       maxForks 1
-      container = 'nanozoo/guppy_gpu:3.6.0-1--440bed1'
+      container = 'nanozoo/guppy_gpu:4.0.11-1--52ff62d'
       containerOptions '--gpus all'
       publishDir "${params.output}/${name}/fastq/", mode: 'copy', pattern: "fastq_${params.output}/*.fastq"
     input:

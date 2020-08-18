@@ -1,6 +1,6 @@
 # Nextflow - Docker pipeline
 
-![](https://img.shields.io/badge/nextflow-19.10.0-brightgreen)
+![](https://img.shields.io/badge/nextflow-20.07.1-brightgreen)
 ![](https://img.shields.io/badge/uses-docker-blue.svg)
 ![](https://img.shields.io/badge/licence-GPL--3.0-lightgrey.svg)
 
@@ -44,13 +44,13 @@
 ## Usage
 
 ````bash
-Nextflow run replikation/docker_pipelines --help
+nextflow run replikation/docker_pipelines --help
 ````
 
-* update you local git copy via 
+* update docker pipelines via 
 
 ````bash
-Nextflow pull replikation/docker_pipelines
+nextflow pull replikation/docker_pipelines
 ````
 
 
