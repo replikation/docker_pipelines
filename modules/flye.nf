@@ -7,6 +7,6 @@ process flye {
   script:
     """
     flye --plasmids --meta -t ${task.cpus} --nano-raw ${read} -o assembly
-    mv assembly/assembly.fasta ${name}.fasta
+    mv assembly/assembly.fasta ${name}.fasta --min-overlap ${params.overlap}
     """
   }
