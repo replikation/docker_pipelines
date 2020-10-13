@@ -6,7 +6,7 @@ process flye {
     tuple val(name), path(read), path("${name}.fasta")
   script:
     """
-    flye --plasmids --meta -t ${task.cpus} --nano-raw ${read} -o assembly
-    mv assembly/assembly.fasta ${name}.fasta --min-overlap ${params.overlap}
+    flye --plasmids --meta -t ${task.cpus} --nano-raw ${read} -o assembly --min-overlap ${params.overlap}
+    mv assembly/assembly.fasta ${name}.fasta 
     """
   }
