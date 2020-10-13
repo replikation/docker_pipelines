@@ -3,6 +3,7 @@
 ![](https://img.shields.io/badge/nextflow-20.07.1-brightgreen)
 ![](https://img.shields.io/badge/uses-docker-blue.svg)
 ![](https://img.shields.io/badge/licence-GPL--3.0-lightgrey.svg)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.4030719.svg)](https://doi.org/10.5281/zenodo.4030719)
 
 ![](https://github.com/replikation/docker_pipelines/workflows/Syntax_check/badge.svg)
 
@@ -24,6 +25,7 @@
 * sourcluster -> kmer based tree/clustering of contigs (fasta) or multiple assmeblies (via dir/)
 * sourmeta -> metagenomic WIMP determination via sourmash
 * deepHumanPathogen -> maps illumina reads against human to remove "human reads" (fastqPairs)
+* (and more)
 
 ## Installation
 
@@ -56,4 +58,5 @@ nextflow pull replikation/docker_pipelines
 
 ### Citation
 
-* please cite Nextflow if you use this and the appropriate tool that you choose to run
+> Christian Brandt. (2020, September 15). Docker pipelines: a collection of nextflow workflows related to nanopore data, taxonomy and antibiotic resistance (Version v.1.0.0). Zenodo. http://doi.org/10.5281/zenodo.4030719
+
