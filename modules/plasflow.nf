@@ -19,7 +19,7 @@ process plasflow_compare {
       publishDir "${params.output}/plasflow/${name}/plasmids", mode: 'copy', pattern: "${name}_${splitname}_plasmids.fasta"
       publishDir "${params.output}/plasflow/${name}/unclassified", mode: 'copy', pattern: "${name}_${splitname}_unclassified.fasta"
       label 'plasflow'
-      maxForks 4
+      //maxForks 4
     input:
       tuple val(name), val(splitname), path(fasta) 
     output:

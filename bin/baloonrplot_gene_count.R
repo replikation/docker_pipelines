@@ -25,16 +25,17 @@ library(reshape2)
 library(ggplot2)
 library(viridis)
 
-dt <- read.csv(file = 'input.csv')
+dt <- read.csv(file = 'input.csv', check.names=FALSE)
 
 balloon_melted <- melt(dt)
+
 
 sizew <- ceiling(( ncol(dt) * 0.4 ) + 4 )
 sizeh <- ceiling(( nrow(dt) * 0.1 ) + 2 )
 
 options(ggplot2.continuous.colour="viridis")
 
-plot <- ggplot(balloon_melted, aes(x = variable, y = type)) +
+plot <- ggplot(balloon_melted, aes(x = as.character(balloon_melted$variable), y = type)) +
 	facet_grid(method ~ type.1, scales = "free", space = "free") +
 	theme_light() +
 	theme(panel.border = element_blank()) + 

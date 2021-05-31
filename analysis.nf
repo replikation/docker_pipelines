@@ -331,6 +331,8 @@ workflow resistance_comparision_wf {
   take: 
     fastas    //val(name), path(file))
   main:
+
+    input_ch_plasflow = fastas
     input_ch_plasflow = fastas.splitFasta(by: 50000, file: true)
                         .map { it -> tuple ( it[0], file(it[1]).getName(), it[1] ) }
 

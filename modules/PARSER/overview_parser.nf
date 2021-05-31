@@ -12,8 +12,8 @@ process overview_parser {
     all_sample_IDs=\$(echo "${sampleIDs}" | tr -d " []" | tr "," "\\n")
 
     header=\$(echo "${sampleIDs}" | tr -d " []")
-    printf "ID,type,type,method,\${header}\\n" > input.csv
-    printf "ID,type,type,method,\${header}\\n" > input_coverage.csv
+    printf "ID,type,type.1,method,\${header}\\n" > input.csv
+    printf "ID,type,type.1,method,\${header}\\n" > input_coverage.csv
 
     ABRIMETHODS=\$(cat *.abricate | grep -v "^#FILE" | cut -f15 | sort | uniq )
     FARMETHODS=\$(head -n 2 -q *gencount.fargene | grep "The used HMM-model was:" | awk '{print \$5}' | sort | uniq | sort )
@@ -135,7 +135,7 @@ else if (!params.coverage)
     all_sample_IDs=\$(echo "${sampleIDs}" | tr -d " []" | tr "," "\\n")
 
     header=\$(echo "${sampleIDs}" | tr -d " []")
-    printf "ID,type,type,method,\${header}\\n" > input.csv
+    printf "ID,type,type.1,method,\${header}\\n" > input.csv
 
     ABRIMETHODS=\$(cat *.abricate | grep -v "^#FILE" | cut -f15 | sort | uniq )
     FARMETHODS=\$(head -n 2 -q *.fargene | grep "The used HMM-model was:" | awk '{print \$5}' | sort | uniq | sort )
