@@ -510,6 +510,7 @@ def helpMSG() {
 
     ${c_yellow}Resistance Workflows:${c_reset}
     ${c_blue} --abricate ${c_reset}          antibiotic and plasmid screening    ${c_green}[--fasta]${c_reset} or ${c_green}[--fastq]${c_reset}
+    ${c_dim}  ..option flags:            [--update] forces a fresh databaseupdate ${c_reset}
     ${c_blue} --mobile ${c_reset}            screens for IS elements             ${c_green}[--fasta]${c_reset}
     ${c_blue} --res_compare ${c_reset}       detailed assembly resistance comparision of 2 or more assemblies ${c_green} [--fasta]${c_reset}
     ${c_dim}  ..option flags:            [--coverage] use coverage info in fasta headers on last position e.g. > name_cov_9.3354 ${c_reset}

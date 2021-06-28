@@ -8,9 +8,16 @@ process abricate {
   output:
 	  tuple val(name), val("${method}"), path("*.tab")
   script:
+    if (!params.update)
     """
   	abricate ${fasta} --nopath --quiet --mincov 85 --db ${method} > ${method}.tab
     """
+    else if (params.update)
+    """
+    abricate-get_db --db ${method} --force
+  	abricate ${fasta} --nopath --quiet  --db ${method} > ${method}.tab
+    """
+
 }
 
 process abricate_compare {
