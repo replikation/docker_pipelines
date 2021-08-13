@@ -102,15 +102,9 @@ if (params.samplename) { sample_name_ch = Channel.of ( params.samplename ) }
 workflow sourmash_database_wf {
     main:
         if (params.sour_db) { database_sourmash = file(params.sour_db) }
-
-        else if (workflow.profile == 'gcloud' && (params.sourmeta || params.sourclass)) {
-                sour_db_preload = file("${params.database}/sourmash/gtdb.lca.json")    
-            if (sour_db_preload.exists()) { database_sourmash = sour_db_preload }
-            else {  sourmash_download_db() 
-                    database_sourmash = sourmash_download_db.out } }
         else if (params.sourmeta || params.sourclass) {
-                    sourmash_download_db() 
-                    database_sourmash = sourmash_download_db.out }
+            database_sourmash = sourmash_download_db() 
+        }
     emit: database_sourmash
 }
 
@@ -124,26 +118,14 @@ workflow metamaps_database_wf {
 workflow gtdbtk_database_wf {
     main:
         if (params.gtdbtk_db) { database_gtdbtk = file(params.gtdbtk_db) }
-        else if (workflow.profile == 'gcloud' && params.gtdbtk) {
-                gtdbtk_preload = file("${params.database}/gtdbtk/gtdbtk_r89_data.tar.gz")    
-            if (gtdbtk_preload.exists()) { database_gtdbtk = gtdbtk_preload }
-            else {  gtdbtk_download_db() 
-                    database_gtdbtk = gtdbtk_download_db.out } }
-        else if (params.gtdbtk) {  
-                    gtdbtk_download_db() 
-                    database_gtdbtk = gtdbtk_download_db.out }
+        else if (params.gtdbtk) { database_gtdbtk = gtdbtk_download_db() }
     emit: database_gtdbtk
 }
 
 workflow centrifuge_database_wf {
     main:
         if (params.centrifuge_db) { database_centrifuge = file( params.centrifuge_db ) }
-        else if (!params.cloudProcess) { centrifuge_download_db() ; database_centrifuge = centrifuge_download_db.out}
-        else if (params.cloudProcess) { 
-            centrifuge_preload = file("${params.database}/centrifuge/gtdb_r89_54k_centrifuge.tar")
-            if (centrifuge_preload.exists()) { database_centrifuge = centrifuge_preload }   
-            else  { centrifuge_download_db()  ; database_centrifuge = centrifuge_download_db.out }
-        }
+        else { database_centrifuge = centrifuge_download_db() }
     emit: database_centrifuge
 } 
 

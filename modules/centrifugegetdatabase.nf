@@ -1,6 +1,5 @@
 process centrifuge_download_db {
-        if (params.cloudProcess) { publishDir "${params.database}/centrifuge", mode: 'copy', pattern: "gtdb_r89_54k_centrifuge.tar"}
-        else { storeDir "${params.database}/centrifuge" } 
+        storeDir "${params.databases}/centrifuge"
         label 'ubuntu'    
       output:
         file("gtdb_r89_54k_centrifuge.tar")

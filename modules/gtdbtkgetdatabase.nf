@@ -1,6 +1,5 @@
 process gtdbtk_download_db {
-        if (workflow.profile == 'gcloud') { publishDir "${params.database}/gtdbtk", mode: 'copy', pattern: "gtdb.lca.json"}
-        else { storeDir "${params.database}/gtdbtk" }  
+        storeDir "${params.databases}/gtdbtk" 
         label 'ubuntu'    
       output:
         file("gtdb.lca.json")

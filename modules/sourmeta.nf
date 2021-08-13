@@ -9,12 +9,12 @@ process sourmashmeta {
     script:
       if (params.fasta)
       """
-      sourmash compute -p ${task.cpus} --scaled 10000 -k 31 ${fasta} -o ${name}.sig 
-      sourmash lca gather  ${name}.sig ${database} --ignore-abundance -o metagenomic-composition.txt
+      sourmash sketch dna -p scaled=10000,k=31 ${fasta} -o ${name}.sig 
+      sourmash gather  ${name}.sig ${database} --ignore-abundance -o metagenomic-composition.txt
       """
       else if (params.fastq)
       """
-      sourmash compute -p ${task.cpus} --scaled 1000 --track-abundance -k 31 ${fasta} -o ${name}.sig 
-      sourmash lca gather  ${name}.sig ${database} -o metagenomic-composition.txt
+      sourmash sketch dna -p scaled=10000,k=31 --track-abundance ${fasta} -o ${name}.sig 
+      sourmash gather  ${name}.sig ${database} -o metagenomic-composition.txt
       """
 }

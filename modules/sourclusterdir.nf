@@ -9,8 +9,8 @@ process sourmashclusterdir {
       tuple val(name), file("results.csv")
     script:
       """
-      cp ${dir}/* .
-      sourmash compute -p ${task.cpus} *.fa* --scaled 10000 -k 31
+      cp ${dir}/*.* .
+      sourmash sketch dna -p scaled=10000,k=31 *.fa*
       sourmash compare *.sig -o results_sig --csv results.csv
       sourmash plot --pdf --subsample=250 --labels results_sig
       """

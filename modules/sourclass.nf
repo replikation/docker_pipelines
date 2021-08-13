@@ -8,7 +8,7 @@ process sourmashclassification {
       tuple val(name), file("taxonomic-classification.txt")
     script:
       """
-      sourmash compute -p ${task.cpus} --scaled 10000 -k 31 ${fasta} -o ${name}.sig
+      sourmash sketch dna -p scaled=10000,k=31 ${fasta} -o ${name}.sig
       sourmash lca classify --db ${database} --query ${name}.sig -o taxonomic-classification.txt
       """
 }
