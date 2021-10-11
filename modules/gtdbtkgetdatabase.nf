@@ -2,10 +2,10 @@ process gtdbtk_download_db {
         storeDir "${params.databases}/gtdbtk" 
         label 'ubuntu'    
       output:
-        file("gtdb.lca.json")
+        path("gtdbtk_data.tar.gz")
       script:
         """
-        wget https://ndownloader.figshare.com/files/18809423?private_link=ed98a281ef089c033352 -O gtdb.lca.json
+        wget --no-check-certificate https://data.gtdb.ecogenomic.org/releases/latest/auxillary_files/gtdbtk_data.tar.gz
         """
     }
 

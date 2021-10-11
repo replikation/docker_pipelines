@@ -192,6 +192,13 @@ workflow centrifuge_database_wf {
     include { sourmashmeta } from './modules/sourmeta' 
     include { toytree } from './modules/toytree'
 
+
+/************************** 
+* Workflows
+**************************/
+
+    //include { bakta_wf } from './workflows/bakta'
+
 /************************** 
 * SUB WORKFLOWS
 **************************/
@@ -460,6 +467,7 @@ workflow {
     if (params.tree_aa && params.dir && !params.fasta) { amino_acid_tree_wf(dir_input_ch) }
     if (params.tree_aa && params.dir && params.fasta) { amino_acid_tree_supp_wf(dir_input_ch, fasta_input_ch) }
     if (params.assembly_ont && params.fastq) { assembly_ont_wf(fastq_input_ch) }
+    if (params.bakta && params.fasta) { bakta_wf(fasta_input_ch) }
 
     // live workflows
     if (params.watchFast5 && params.samplename && params.fasta) { live_analysis_wf(sample_name_ch, fast5_live_input_ch, fasta_input_ch) }
@@ -507,7 +515,9 @@ def helpMSG() {
     ${c_dim}  ..inputs:                  cluster contigs: [--fasta]; cluster fastas: [--dir]${c_reset}
     ${c_dim}  ..option flags:            [--size] figure size; default [--size $params.size]${c_reset}
     ${c_blue} --gtdbtk ${c_reset}            tax. class. via marker genes        ${c_green}[--dir]${c_reset}
-    ${c_dim}  ..option flags:            [--gtdbtk_db] path to your own DB instead ${c_reset}
+    ${c_dim}  ..option flags:            [--gtdbtk_db] path to your own DB instead (.tar.gz) ${c_reset}
+    ${c_blue} --bakta ${c_reset}             bacterial gene annotation           ${c_green}[--fasta]${c_reset}
+    ${c_dim}  ..option flags:            [--bakta_db] path to your own DB instead (.tar.gz) ${c_reset}
 
     ${c_yellow}Metagenomic Workflows:${c_reset}
     ${c_blue} --centrifuge ${c_reset}        metagenomic classification of reads ${c_green}[--fastq]${c_reset} or ${c_green}[--fastqPair]${c_reset}
