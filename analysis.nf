@@ -197,7 +197,7 @@ workflow centrifuge_database_wf {
 * Workflows
 **************************/
 
-    //include { bakta_wf } from './workflows/bakta'
+    include { bakta_wf } from './workflows/bakta_wf'
 
 /************************** 
 * SUB WORKFLOWS
