@@ -198,6 +198,7 @@ workflow centrifuge_database_wf {
 **************************/
 
     include { bakta_wf } from './workflows/bakta_wf'
+    include { checkm_wf } from './workflows/checkm_wf'
 
 /************************** 
 * SUB WORKFLOWS
@@ -468,6 +469,7 @@ workflow {
     if (params.tree_aa && params.dir && params.fasta) { amino_acid_tree_supp_wf(dir_input_ch, fasta_input_ch) }
     if (params.assembly_ont && params.fastq) { assembly_ont_wf(fastq_input_ch) }
     if (params.bakta && params.fasta) { bakta_wf(fasta_input_ch) }
+    if (params.checkm && params.dir) { checkm_wf(dir_input_ch) }
 
     // live workflows
     if (params.watchFast5 && params.samplename && params.fasta) { live_analysis_wf(sample_name_ch, fast5_live_input_ch, fasta_input_ch) }
@@ -518,6 +520,7 @@ def helpMSG() {
     ${c_dim}  ..option flags:            [--gtdbtk_db] path to your own DB instead (.tar.gz) ${c_reset}
     ${c_blue} --bakta ${c_reset}             bacterial gene annotation           ${c_green}[--fasta]${c_reset}
     ${c_dim}  ..option flags:            [--bakta_db] path to your own DB instead (.tar.gz) ${c_reset}
+    ${c_blue} --checkm ${c_reset}            genome quali/comp.  (dir /w .fasta) ${c_green}[--dir]${c_reset}
 
     ${c_yellow}Metagenomic Workflows:${c_reset}
     ${c_blue} --centrifuge ${c_reset}        metagenomic classification of reads ${c_green}[--fastq]${c_reset} or ${c_green}[--fastqPair]${c_reset}
