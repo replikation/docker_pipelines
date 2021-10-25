@@ -14,7 +14,7 @@ process checkm {
 
         mkdir temporary
         mkdir ${name}_bin
-        mv ${bins}/*.fa* ${name}_bin/
+        cp ${bins}/*.fa* ${name}_bin/
 
         checkm lineage_wf --tmpdir temporary --pplacer_threads 4 -t ${task.cpus} --reduced_tree -x \$SUFFIXNAME ${name}_bin ${name}_checkm > summary.txt
         checkm bin_qa_plot --image_type png -x \$SUFFIXNAME ${name}_checkm ${name}_bin ${name}_checkm_plot
