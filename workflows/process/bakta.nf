@@ -11,7 +11,9 @@ process bakta {
       tar xzf ${database}
       rm ${database}
       export BAKTA_DB=./db
-      amrfinder_update --force_update --database db/amrfinderplus-db/
+
+      # try to update abr but skip if not possible
+      amrfinder_update --force_update --database db/amrfinderplus-db/ || true
 
       bakta --output ${name}-results --threads ${task.cpus} ${fasta}
 
