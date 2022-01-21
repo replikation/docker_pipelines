@@ -556,6 +556,7 @@ def helpMSG() {
     ${c_dim}  ..option flags:            [--filenames] use filenames as labels instead of contig names
     ${c_dim}                             [--fasta] add one multi protein file as "tree enhancer" 
     ${c_dim}                               e.g. [--fasta multipleProteins.aa]${c_reset}
+    ${c_blue} --spades ${c_reset}            assembly of illumina fastq-reads    ${c_green}[--fastqPair '*_R{1,2}.fastq.gz']${c_reset}
 
     ${c_reset}Options:
     --cores             max cores for local use [default: $params.cores]
