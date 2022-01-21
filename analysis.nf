@@ -190,6 +190,7 @@ workflow centrifuge_database_wf {
     include { sourmashclusterdir } from './modules/sourclusterdir' 
     include { sourmashclusterfasta } from './modules/sourclusterfasta' 
     include { sourmashmeta } from './modules/sourmeta' 
+    include { spades_wf } from './workflows/spades_wf'
     include { toytree } from './modules/toytree'
 
 
@@ -449,6 +450,7 @@ workflow {
     if (params.abricate && params.fastq) { abricate_FASTQ_wf(fastq_input_ch) }
     if (params.centrifuge && params.fastq) { centrifuge_wf(fastq_input_ch, centrifuge_database_wf()) }
     if (params.centrifuge && params.fastqPair) { centrifuge_illumina_wf(fastqPair_input_ch, centrifuge_database_wf()) }
+    if (params.spades && params.fastqPair) { spades_wf(fastqPair_input_ch) }
     if (params.deepHumanPathogen && params.fastqPair) { deepHumanPathogen_wf(fastqPair_input_ch)}
     if (params.dev ) { dev_build_centrifuge_DB_cloud_wf() }
     if (params.gtdbtk && params.dir) { gtdbtk_wf(dir_input_ch,gtdbtk_database_wf()) }
