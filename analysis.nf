@@ -199,6 +199,7 @@ workflow centrifuge_database_wf {
 
     include { bakta_wf } from './workflows/bakta_wf'
     include { checkm_wf } from './workflows/checkm_wf'
+    include { transposon_compare_wf } from './workflows/transposon_compare_wf'
 
 /************************** 
 * SUB WORKFLOWS
@@ -247,7 +248,7 @@ workflow abricate_FASTQ_wf {
 
 workflow abricate_FASTA_wf {
     take:   fasta_input_ch
-    main:   method = ['argannot', 'card', 'ncbi', 'plasmidfinder', 'resfinder']
+    main:   method = ['argannot', 'ncbi', 'plasmidfinder', 'resfinder']
             abricatePlotFASTA(abricateParserFASTA(abricate(fasta_input_ch, method)))
 }
 
@@ -470,6 +471,7 @@ workflow {
     if (params.assembly_ont && params.fastq) { assembly_ont_wf(fastq_input_ch) }
     if (params.bakta && params.fasta) { bakta_wf(fasta_input_ch) }
     if (params.checkm && params.dir) { checkm_wf(dir_input_ch) }
+    if (params.searchterm && params.fasta) { transposon_compare_wf(fasta_input_ch)}
 
     // live workflows
     if (params.watchFast5 && params.samplename && params.fasta) { live_analysis_wf(sample_name_ch, fast5_live_input_ch, fasta_input_ch) }
@@ -507,6 +509,8 @@ def helpMSG() {
     ${c_blue} --res_compare ${c_reset}       detailed assembly resistance comparision of 2 or more assemblies ${c_green} [--fasta]${c_reset}
     ${c_dim}  ..option flags:            [--coverage] use coverage info in fasta headers on last position e.g. > name_cov_9.3354 ${c_reset}
     ${c_blue} --plasmid_analysis ${c_reset}  analysis of plasmids with plots     ${c_green}[--fasta]${c_reset}
+    ${c_blue} --searchterm ${params.searchterm} ${c_reset}  compare target genes across sequences via clinker    ${c_green}[--fasta]${c_reset}
+    ${c_dim}  ..option flags:            [--range ${params.range}] specifiy in bp the up and down stream range from target gene ${c_reset}
 
     ${c_yellow}Cluster and Classifications:${c_reset} 
     ${c_blue} --sourmeta ${c_reset}          metagenomic analysis "WIMP"         ${c_green}[--fasta]${c_reset} or ${c_green}[--fastq]${c_reset}
