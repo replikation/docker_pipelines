@@ -509,7 +509,7 @@ def helpMSG() {
     ${c_blue} --res_compare ${c_reset}       detailed assembly resistance comparision of 2 or more assemblies ${c_green} [--fasta]${c_reset}
     ${c_dim}  ..option flags:            [--coverage] use coverage info in fasta headers on last position e.g. > name_cov_9.3354 ${c_reset}
     ${c_blue} --plasmid_analysis ${c_reset}  analysis of plasmids with plots     ${c_green}[--fasta]${c_reset}
-    ${c_blue} --searchterm ${params.searchterm} ${c_reset}  compare target genes across sequences via clinker    ${c_green}[--fasta]${c_reset}
+    ${c_blue} --searchterm blaVIM ${c_reset}  compare target genes (e.g. blaVIM) across sequences via clinker    ${c_green}[--fasta]${c_reset}
     ${c_dim}  ..option flags:            [--range ${params.range}] specifiy in bp the up and down stream range from target gene ${c_reset}
 
     ${c_yellow}Cluster and Classifications:${c_reset} 
