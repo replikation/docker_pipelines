@@ -200,6 +200,7 @@ workflow centrifuge_database_wf {
     include { bakta_wf } from './workflows/bakta_wf'
     include { checkm_wf } from './workflows/checkm_wf'
     include { transposon_compare_wf } from './workflows/transposon_compare_wf'
+    include { read_classification_illumina_pe_wf } from './workflows/taxonomic_read_class_wf'
 
 /************************** 
 * SUB WORKFLOWS
@@ -472,6 +473,7 @@ workflow {
     if (params.bakta && params.fasta) { bakta_wf(fasta_input_ch) }
     if (params.checkm && params.dir) { checkm_wf(dir_input_ch) }
     if (params.searchterm && params.fasta) { transposon_compare_wf(fasta_input_ch)}
+    if (params.kraken2 && params.fastqPair) { read_classification_illumina_pe_wf(fastqPair_input_ch) }
 
     // live workflows
     if (params.watchFast5 && params.samplename && params.fasta) { live_analysis_wf(sample_name_ch, fast5_live_input_ch, fasta_input_ch) }
@@ -531,6 +533,8 @@ def helpMSG() {
     ${c_dim}  ..option flags:            [--centrifuge_db] path to your own DB instead, either .tar or .tar.gz ${c_reset}
     ${c_blue} --metamaps ${c_reset}          metagenomic class. of long reads    ${c_green}[--fastq]${c_reset}
     ${c_dim}  ..mandatory flags:         [--memory] [--tax_db] e.g. --memory 100 --tax_db /databases/miniSeq+H 
+    ${c_blue} --kraken2 ${c_reset}        metagenomic classification of reads ${c_green}[--fastqPair]${c_reset}
+    ${c_dim}  ..option flags:            [--krakendb] path to your own DB instead. Format: .tar.gz ${c_reset}
 
     ${c_yellow}Nanopore specific Workflows:${c_reset}
     ${c_blue} --guppygpu ${c_reset}          basecalling via guppy-gpu-nvidia   ${c_green} [--dir]${c_reset}

@@ -3,11 +3,6 @@ process centrifuge_illumina {
       publishDir "${params.output}/${name}/centrifuge", mode: 'copy', pattern: "${name}.out"
       label 'centrifuge'
 
-      //errorStrategy { task.exitStatus in 137..140 ? 'retry' : 'terminate' }
-      //errorStrategy { task.exitStatus == 14 ? 1 : task.attempt }
-      //cpus { 12 * task.attempt }
-      //memory { 70.GB * task.attempt }
-      //maxRetries 2  
 
     input:
       tuple val(name), file(fastq) 
