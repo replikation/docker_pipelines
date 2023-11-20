@@ -1,9 +1,7 @@
 process fargene {
     label 'fargene'
-    errorStrategy 'ignore'
-    validExitStatus 0,1
   input:
-    tuple val(name), val(splitname), val(type), path(fasta) 
+    tuple val(name), val(splitname), val(type), path(fasta) optional true 
     each method
   output:
     path("${method}_${type}_${name}_*.fargene") 
@@ -19,7 +17,6 @@ process fargene {
 
 process fargene_plasmid_screen {
     label 'fargene'
-    validExitStatus 0,1
     //publishDir "${params.output}/fargene/", mode: 'copy'
   input:
     tuple val(name), path(fasta) 

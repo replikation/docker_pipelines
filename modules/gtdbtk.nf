@@ -21,6 +21,6 @@ process gtdbtk {
       # file suffix get
       SUFFIXNAME=\$(ls ${dir} | head -1 | rev | cut -f1 -d "." | rev)
 
-      gtdbtk classify_wf  --genome_dir ${dir} --cpus 1 --out_dir ${name}-results -x \${SUFFIXNAME} --scratch_dir scratch_dir
+      gtdbtk classify_wf  --genome_dir ${dir} --skip_ani_screen --pplacer_cpus 1 --out_dir ${name}-results -x \${SUFFIXNAME} --scratch_dir scratch_dir
       """
 }
